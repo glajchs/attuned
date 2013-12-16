@@ -4,6 +4,7 @@ import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.FileFilter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
@@ -11,24 +12,36 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.swing.KeyStroke;
+import javax.swing.LayoutStyle;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.FocusEvent;
 import org.eclipse.swt.events.FocusListener;
+import org.eclipse.swt.events.KeyListener;
+import org.eclipse.swt.events.ModifyEvent;
+import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.internal.Library;
+import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.Layout;
+import org.eclipse.swt.widgets.List;
+import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Scale;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
+import org.eclipse.swt.widgets.Text;
 import org.gstreamer.ClockTime;
 import org.gstreamer.ElementFactory;
 import org.gstreamer.Gst;
@@ -40,7 +53,7 @@ import com.tulskiy.keymaster.common.HotKeyListener;
 import com.tulskiy.keymaster.common.Provider;
 
 public class AttunedMainWindow {
-    private Table songTable;
+    final private Table songTable;
     public PlayBin2 theSoundPlayer = null;
     private Button play;
     private static Display display;
@@ -70,6 +83,7 @@ public class AttunedMainWindow {
     public AttunedMainWindow(final Display display) {
         shell = new Shell(display);
         shell.setText("Attuned");
+        shell.setSize(600, 500);
 
         Logger logger = Logger.getLogger("org.jaudiotagger");
         logger.setLevel(Level.WARNING);
@@ -279,7 +293,8 @@ public class AttunedMainWindow {
         trackNumberColumn.setText("Track #");
         trackNumberColumn.setMoveable(true);
 
-        File baseDir = new File("/media/Shared/Music/iTunes/Tool");
+        File baseDir = new File("/media/Shared/Music");
+//        File baseDir = new File("/media/Shared/Music/iTunes/Tool");
         recurseDirectory(baseDir, songTable);
 
         songNameColumn.pack();
@@ -307,14 +322,12 @@ public class AttunedMainWindow {
                     public void run() {
                         System.out.println("about 2 finish");
                         System.out.println(element.getState());
-                        if (!manualPlaybackEvent) {
-                            TableItem nextItem = songTable
-                                    .getItem(determineNextSongIndex());
-                            songTable.setSelection(nextItem);
-                            File song = new File((String) nextItem
-                                    .getData("filename"));
-                            playSongFromScratch(song);
-                        }
+                        TableItem nextItem = songTable
+                                .getItem(determineNextSongIndex());
+                        songTable.setSelection(nextItem);
+                        File song = new File((String) nextItem
+                                .getData("filename"));
+                        playSongFromScratch(song);
                     }
                 });
             }
@@ -646,7 +659,132 @@ public class AttunedMainWindow {
     }
 
     private void jumpTo() {
+        final Shell jumpToDialog = new Shell(display);
+//        Group outerGroup = new Group(jumpToDialog, SWT.NONE);
+//        outerGroup.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+//        outerGroup.setLayout(new GridLayout(2, true));
+        jumpToDialog.setText("Attuned - Jump To Song");
+        jumpToDialog.setSize(300, 200);
+
+        GridLayout gridLayout = new GridLayout(2, true);
+        gridLayout.numColumns = 1;
+        jumpToDialog.setLayout(gridLayout);
+        final Text searchText = new Text(jumpToDialog, SWT.NONE);
+        
+        final Table resultsTable = new Table(jumpToDialog, SWT.MULTI | SWT.BORDER
+                | SWT.FULL_SELECTION);
+        resultsTable.setLinesVisible(true);
+        resultsTable.setHeaderVisible(true);
+        resultsTable.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+        jumpToDialog.addListener(SWT.Traverse, new Listener() {
+            @Override
+            public void handleEvent(Event event) {
+                switch (event.detail) {
+                    case SWT.TRAVERSE_ESCAPE:
+                        jumpToDialog.close();
+                        event.detail = SWT.TRAVERSE_NONE;
+                        event.doit = false;
+                        break;
+                    case SWT.TRAVERSE_RETURN:
+                        TableItem item = resultsTable.getSelection()[0];
+                        songTable.setSelection((Integer) item.getData("index"));
+                        playSongFromScratch(new File((String) item.getData("filename")));
+                        jumpToDialog.close();
+                        event.detail = SWT.TRAVERSE_NONE;
+                        event.doit = false;
+                        break;
+                }
+            }
+        });
+        
+        TableColumn songNameColumn = new TableColumn(resultsTable, SWT.NONE);
+        songNameColumn.setText("Song");
+        songNameColumn.pack();
+        
+        searchText.setLayoutData(new GridData(SWT.FILL, SWT.NONE, true, false));
+        searchText.addKeyListener(new KeyListener() {
+            
+            @Override
+            public void keyReleased(org.eclipse.swt.events.KeyEvent e) {
+                // TODO Auto-generated method stub
+                
+            }
+            
+            @Override
+            public void keyPressed(org.eclipse.swt.events.KeyEvent e) {
+                System.out.println(e.keyCode);
+                if (e.keyCode == SWT.ARROW_DOWN) {
+                    int selectionTable = resultsTable.getSelectionIndex();
+                    if (selectionTable + 1 < resultsTable.getItemCount()) {
+                        resultsTable.setSelection(selectionTable + 1);
+                    }
+                    
+                } else if (e.keyCode == SWT.ARROW_UP) {
+                    int selectionTable = resultsTable.getSelectionIndex();
+                    if (selectionTable > 0) {
+                        resultsTable.setSelection(selectionTable - 1);
+                    }
+                }
+            }
+        });
+        searchText.addModifyListener(new ModifyListener() {
+            @Override
+            public void modifyText(ModifyEvent e) {
+                display.asyncExec(new Runnable() {
+                    public void run() {
+                        ArrayList<TableItem> songNameStartsWithMatches = new ArrayList<TableItem>();
+                        ArrayList<TableItem> artistNameStartsWithMatches = new ArrayList<TableItem>();
+                        ArrayList<TableItem> albumNameStartsWithMatches = new ArrayList<TableItem>();
+                        ArrayList<TableItem> songNameOtherMatches = new ArrayList<TableItem>();
+                        ArrayList<TableItem> artistNameOtherMatches = new ArrayList<TableItem>();
+                        ArrayList<TableItem> albumNameOtherMatches = new ArrayList<TableItem>();
+                        String search = searchText.getText();
+                        for (TableItem tableItem : songTable.getItems()) {
+                            if (tableItem.getText(0).toLowerCase().startsWith(search)) {
+                                songNameStartsWithMatches.add(tableItem);
+                            } else if (tableItem.getText(1).toLowerCase().startsWith(search)) {
+                                artistNameStartsWithMatches.add(tableItem);
+                            } else if (tableItem.getText(2).toLowerCase().startsWith(search)) {
+                                albumNameStartsWithMatches.add(tableItem);
+                            } else if (tableItem.getText(0).toLowerCase().contains(search)) {
+                                songNameOtherMatches.add(tableItem);
+                            } else if (tableItem.getText(1).toLowerCase().contains(search)) {
+                                artistNameOtherMatches.add(tableItem);
+                            } else if (tableItem.getText(2).toLowerCase().contains(search)) {
+                                albumNameOtherMatches.add(tableItem);
+                            }
+                        }
+                        resultsTable.removeAll();
+                        addItemsToList(songNameStartsWithMatches, resultsTable);
+                        addItemsToList(artistNameStartsWithMatches, resultsTable);
+                        addItemsToList(albumNameStartsWithMatches, resultsTable);
+                        addItemsToList(songNameOtherMatches, resultsTable);
+                        addItemsToList(artistNameOtherMatches, resultsTable);
+                        addItemsToList(albumNameOtherMatches, resultsTable);
+                        resultsTable.select(0);
+                    }
+                });
+            }
+        });
+
+        jumpToDialog.open();
+        while (!jumpToDialog.isDisposed()) {
+            if (!display.readAndDispatch()) {
+                display.sleep();
+            }
+        }
         System.out.println("jump to");
+    }
+    
+    private void addItemsToList(ArrayList<TableItem> items, Table resultsTable) {
+        for (TableItem tableItem : items) {
+//            resultsList.add(tableItem.getText(0) + " - " + tableItem.getText(1) + " - " + tableItem.getText(2));
+            TableItem item = new TableItem(resultsTable, SWT.NONE);
+            item.setText(0, tableItem.getText(0) + " - " + tableItem.getText(1) + " - " + tableItem.getText(2));
+            item.setData("filename", tableItem.getData("filename"));
+            item.setData("index", songTable.indexOf(tableItem));
+        }
     }
 
     private void recurseDirectory(File currentDirectory, Table songTable) {
