@@ -12,7 +12,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.swing.KeyStroke;
-import javax.swing.LayoutStyle;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.FocusEvent;
@@ -24,17 +23,12 @@ import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
-import org.eclipse.swt.internal.Library;
-import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
-import org.eclipse.swt.widgets.Group;
-import org.eclipse.swt.widgets.Layout;
-import org.eclipse.swt.widgets.List;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Scale;
 import org.eclipse.swt.widgets.Shell;
@@ -294,6 +288,7 @@ public class AttunedMainWindow {
         trackNumberColumn.setMoveable(true);
 
         File baseDir = new File("/media/Shared/Music");
+//        File baseDir = new File("/media/Shared/Music/Amazon MP3/Solar Fields/Jupiter Sessions");
 //        File baseDir = new File("/media/Shared/Music/iTunes/Tool");
         recurseDirectory(baseDir, songTable);
 
@@ -320,8 +315,6 @@ public class AttunedMainWindow {
             public void aboutToFinish(final PlayBin2 element) {
                 display.asyncExec(new Runnable() {
                     public void run() {
-                        System.out.println("about 2 finish");
-                        System.out.println(element.getState());
                         TableItem nextItem = songTable
                                 .getItem(determineNextSongIndex());
                         songTable.setSelection(nextItem);
@@ -339,7 +332,6 @@ public class AttunedMainWindow {
                     public void run() {
                         setupTrackSeekForSong();
                         if (!manualPlaybackEvent) {
-                            System.out.println("autoInc");
                             int nextSongIndex = determineNextSongIndex();
                             songTable.setSelection(nextSongIndex);
                         }
@@ -660,9 +652,6 @@ public class AttunedMainWindow {
 
     private void jumpTo() {
         final Shell jumpToDialog = new Shell(display);
-//        Group outerGroup = new Group(jumpToDialog, SWT.NONE);
-//        outerGroup.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-//        outerGroup.setLayout(new GridLayout(2, true));
         jumpToDialog.setText("Attuned - Jump To Song");
         jumpToDialog.setSize(300, 200);
 
@@ -713,7 +702,6 @@ public class AttunedMainWindow {
             
             @Override
             public void keyPressed(org.eclipse.swt.events.KeyEvent e) {
-                System.out.println(e.keyCode);
                 if (e.keyCode == SWT.ARROW_DOWN) {
                     int selectionTable = resultsTable.getSelectionIndex();
                     if (selectionTable + 1 < resultsTable.getItemCount()) {
@@ -737,6 +725,7 @@ public class AttunedMainWindow {
                         ArrayList<TableItem> artistNameStartsWithMatches = new ArrayList<TableItem>();
                         ArrayList<TableItem> albumNameStartsWithMatches = new ArrayList<TableItem>();
                         ArrayList<TableItem> songNameOtherMatches = new ArrayList<TableItem>();
+                        ArrayList<TableItem> fileNameMatches = new ArrayList<TableItem>();
                         ArrayList<TableItem> artistNameOtherMatches = new ArrayList<TableItem>();
                         ArrayList<TableItem> albumNameOtherMatches = new ArrayList<TableItem>();
                         String search = searchText.getText();
@@ -753,6 +742,14 @@ public class AttunedMainWindow {
                                 artistNameOtherMatches.add(tableItem);
                             } else if (tableItem.getText(2).toLowerCase().contains(search)) {
                                 albumNameOtherMatches.add(tableItem);
+                            } else {
+                                String fileName = ((String) tableItem.getData("filename")).toLowerCase();
+                                if (fileName.contains("/")) {
+                                    fileName = fileName.substring(fileName.lastIndexOf("/"));
+                                }
+                                if (fileName.contains(search)) {
+                                    fileNameMatches.add(tableItem);
+                                }
                             }
                         }
                         resultsTable.removeAll();
@@ -760,6 +757,7 @@ public class AttunedMainWindow {
                         addItemsToList(artistNameStartsWithMatches, resultsTable);
                         addItemsToList(albumNameStartsWithMatches, resultsTable);
                         addItemsToList(songNameOtherMatches, resultsTable);
+                        addItemsToList(fileNameMatches, resultsTable);
                         addItemsToList(artistNameOtherMatches, resultsTable);
                         addItemsToList(albumNameOtherMatches, resultsTable);
                         resultsTable.select(0);
@@ -774,12 +772,10 @@ public class AttunedMainWindow {
                 display.sleep();
             }
         }
-        System.out.println("jump to");
     }
     
     private void addItemsToList(ArrayList<TableItem> items, Table resultsTable) {
         for (TableItem tableItem : items) {
-//            resultsList.add(tableItem.getText(0) + " - " + tableItem.getText(1) + " - " + tableItem.getText(2));
             TableItem item = new TableItem(resultsTable, SWT.NONE);
             item.setText(0, tableItem.getText(0) + " - " + tableItem.getText(1) + " - " + tableItem.getText(2));
             item.setData("filename", tableItem.getData("filename"));

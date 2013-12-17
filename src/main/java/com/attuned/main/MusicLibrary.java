@@ -16,6 +16,7 @@ import org.jaudiotagger.audio.exceptions.CannotReadException;
 import org.jaudiotagger.audio.exceptions.InvalidAudioFrameException;
 import org.jaudiotagger.audio.exceptions.ReadOnlyFileException;
 import org.jaudiotagger.audio.mp3.MP3File;
+import org.jaudiotagger.tag.FieldKey;
 import org.jaudiotagger.tag.TagException;
 import org.jaudiotagger.tag.id3.ID3v24Frames;
 import org.jaudiotagger.tag.id3.ID3v24Tag;
@@ -28,6 +29,9 @@ public class MusicLibrary {
         String artist = convertNullToEmpty(id3Tag.getFirst(ID3v24Frames.FRAME_ID_ARTIST));
         String album = convertNullToEmpty(id3Tag.getFirst(ID3v24Frames.FRAME_ID_ALBUM));
         String trackName = convertNullToEmpty(id3Tag.getFirst(ID3v24Frames.FRAME_ID_TITLE));
+        if (trackName.equals("")) {
+            trackName = song.getName();
+        }
         String trackNumber = convertNullToEmpty(id3Tag.getFirst(ID3v24Frames.FRAME_ID_TRACK));
         
         TableItem item = new TableItem(songTable, SWT.NONE);
@@ -60,6 +64,10 @@ public class MusicLibrary {
                 if (id3Tag != null) {
                     addSongToLibrary(id3Tag, songTable, song);
                     idTags.add(id3Tag);
+                } else {
+                    id3Tag = new ID3v24Tag();
+                    id3Tag.setField(FieldKey.TITLE, song.getName());
+                    addSongToLibrary(id3Tag, songTable, song);
                 }
             }
         } catch (IOException e) {
