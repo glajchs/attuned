@@ -21,3 +21,11 @@ libgstreamer-plugins-base0.10-dev
 
 #### keybinds
 libX11-dev  
+
+
+A small music program I wrote with the purpose of being quick to use in the background.
+I was frustrated that no OS seems to have a good music player anymore with what Winamp used to have for global keyboard shortcuts.
+Key features are global keybinds for most audio functions and a "jump to song" search box bound via global keybind.
+Change your song while playing your game/coding/doing anything else without requiring an alt+tab.
+I plan to make this cross-OS (thus being based on Java and SWT)
+Requires a lot of tweaking to be made good for general use, and is Linux only thusfar.
