@@ -30,17 +30,7 @@ import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.layout.RowLayout;
-import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Event;
-import org.eclipse.swt.widgets.Listener;
-import org.eclipse.swt.widgets.Scale;
-import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.Table;
-import org.eclipse.swt.widgets.TableColumn;
-import org.eclipse.swt.widgets.TableItem;
-import org.eclipse.swt.widgets.Text;
+import org.eclipse.swt.widgets.*;
 import org.gstreamer.ClockTime;
 import org.gstreamer.ElementFactory;
 import org.gstreamer.Gst;
@@ -50,6 +40,7 @@ import org.gstreamer.elements.PlayBin2;
 import com.tulskiy.keymaster.common.HotKey;
 import com.tulskiy.keymaster.common.HotKeyListener;
 import com.tulskiy.keymaster.common.Provider;
+import org.jaudiotagger.tag.id3.AbstractTagItem;
 
 public class AttunedMainWindow {
     final private Table songTable;
@@ -86,9 +77,79 @@ public class AttunedMainWindow {
         }
     }
 
+    private void quit(Shell shell) {
+        try {
+            if (provider != null) {
+                provider.reset();
+            }
+        } finally {
+            try {
+                if (shell != null && !shell.isDisposed()) {
+                    shell.close();
+                }
+            } finally {
+                try {
+                    if (display != null && !display.isDisposed()) {
+                        display.dispose();
+                    }
+                } finally {
+                    System.exit(0);
+                }
+            }
+        }
+    }
+
+    private void setupMenus(final Shell shell) {
+        Menu menuBar = new Menu(shell, SWT.BAR);
+        MenuItem fileMenuHeader = new MenuItem(menuBar, SWT.CASCADE);
+        fileMenuHeader.setText("&File");
+
+        Menu fileMenu = new Menu(shell, SWT.DROP_DOWN);
+        fileMenuHeader.setMenu(fileMenu);
+
+        MenuItem fileOpenFolderItem = new MenuItem(fileMenu, SWT.PUSH);
+        fileOpenFolderItem.setText("&Open");
+        fileOpenFolderItem.setAccelerator(SWT.CTRL | 'o');
+
+        MenuItem fileQuitItem = new MenuItem(fileMenu, SWT.PUSH);
+        fileQuitItem.setText("&Quit");
+        fileQuitItem.setAccelerator(SWT.CTRL | 'q');
+
+        MenuItem helpMenuHeader = new MenuItem(menuBar, SWT.CASCADE);
+        helpMenuHeader.setText("&Help");
+
+        Menu helpMenu = new Menu(shell, SWT.DROP_DOWN);
+        helpMenuHeader.setMenu(helpMenu);
+
+        MenuItem helpAboutItem = new MenuItem(helpMenu, SWT.PUSH);
+        helpAboutItem.setText("&About");
+
+        fileQuitItem.addSelectionListener(new SelectionListener() {
+            public void widgetSelected(SelectionEvent event) {
+                quit(shell);
+            }
+            public void widgetDefaultSelected(SelectionEvent event) {
+                quit(shell);
+            }
+        });
+        helpAboutItem.addSelectionListener(new SelectionListener() {
+            public void widgetSelected(SelectionEvent event) {
+                System.out.println("TODO: open music library folder.");
+            }
+
+            public void widgetDefaultSelected(SelectionEvent event) {
+                System.out.println("TODO: open music library folder.");
+            }
+        });
+
+        shell.setMenuBar(menuBar);
+    }
+
+
     public AttunedMainWindow(final Display display) {
         shell = new Shell(display);
         try {
+        setupMenus(shell);
         shell.setText("Attuned");
         shell.setSize(300, 500);
 
@@ -367,10 +428,7 @@ public class AttunedMainWindow {
                 }
             }
         } finally {
-            provider.reset();
-            if (!shell.isDisposed()) {
-                shell.dispose();
-            }
+            quit(shell);
         }
     }
 
@@ -877,14 +935,19 @@ public class AttunedMainWindow {
     private Button next;
 
     public static void main(String[] args) {
+        silenceThirdpartyLoggers();
         display = new Display();
         try {
             new AttunedMainWindow(display);
         } finally {
             display.dispose();
+            System.exit(0);
         }
+    }
 
-        System.exit(0);
+    private static void silenceThirdpartyLoggers() {
+        Provider.logger.setLevel(Level.WARNING);
+        AbstractTagItem.logger.setLevel(Level.SEVERE);
     }
 
     public void run() {
