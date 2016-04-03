@@ -7,6 +7,7 @@ import java.io.FileFilter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -62,6 +63,10 @@ public class AttunedMainWindow {
     private final Provider provider = Provider.getCurrentProvider(false);
     private int currentPosition;
     private ScheduledFuture<?> trackSeekFuture;
+    private boolean repeat = false;
+    private boolean shuffle = false;
+    private List<Integer> shuffleHistory = new ArrayList<Integer>();
+    private Integer shufflePointer = 0;
 
     class FileComparator implements Comparator<File> {
         public int compare(File file1, File file2) {
@@ -590,10 +595,31 @@ public class AttunedMainWindow {
         }
     }
 
+    private int findNextShuffleSongIndex() {
+        int numSongs = songTable.getItemCount();
+        int newShuffleIndex = (int) (Math.random() * (numSongs + 1));
+        shuffleHistory.add(newShuffleIndex);
+        shufflePointer++;
+        return newShuffleIndex;
+    }
+
     private int determineNextSongIndex() {
+        if (shuffle) {
+            if (shufflePointer + 1 < shuffleHistory.size()) {
+                shufflePointer++;
+                return shuffleHistory.get(shufflePointer);
+            } else {
+                return findNextShuffleSongIndex();
+            }
+        }
         int[] selectedItemIndicies = songTable.getSelectionIndices();
         if (selectedItemIndicies.length > 0) {
-            int nextItemIndex = selectedItemIndicies[0] + 1;
+            int nextItemIndex;
+            if (repeat) {
+                nextItemIndex = selectedItemIndicies[0];
+            } else {
+                nextItemIndex = selectedItemIndicies[0] + 1;
+            }
             if (nextItemIndex >= songTable.getItemCount()) {
                 nextItemIndex = 0;
             }
@@ -604,9 +630,23 @@ public class AttunedMainWindow {
     }
 
     private int determinePreviousSongIndex() {
+        if (shuffle) {
+            if (shufflePointer > 0) {
+                shufflePointer--;
+                return shuffleHistory.get(shufflePointer);
+            } else {
+                // Not sure what we want to do here yet
+                return 0;
+            }
+        }
         int[] selectedItemIndicies = songTable.getSelectionIndices();
         if (selectedItemIndicies.length > 0) {
-            int previousItemIndex = selectedItemIndicies[0] - 1;
+            int previousItemIndex;
+            if (repeat) {
+                previousItemIndex = selectedItemIndicies[0];
+            } else {
+                previousItemIndex = selectedItemIndicies[0] - 1;
+            }
             if (previousItemIndex < 0) {
                 previousItemIndex = songTable.getItemCount() - 1;
             }
@@ -675,11 +715,11 @@ public class AttunedMainWindow {
     }
 
     private void toggleShuffle() {
-        System.out.println("toggle shuffle");
+        shuffle = (!shuffle);
     }
 
     private void toggleRepeat() {
-        System.out.println("toggle repeat");
+        repeat = (!repeat);
     }
 
     private void jumpTo() {
