@@ -35,10 +35,10 @@ public class MusicLibrary {
         String trackNumber = convertNullToEmpty(id3Tag.getFirst(ID3v24Frames.FRAME_ID_TRACK));
         
         TableItem item = new TableItem(songTable, SWT.NONE);
-        item.setText(0, trackName);
+        item.setText(0, trackNumber);
         item.setText(1, artist);
         item.setText(2, album);
-        item.setText(3, trackNumber);
+        item.setText(3, trackName);
         item.setData("filename", song.getAbsolutePath());
         
         Artist currentArtistInLibrary = null;
@@ -74,8 +74,7 @@ public class MusicLibrary {
             // TODO Auto-generated catch block
             e.printStackTrace();
         } catch (CannotReadException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            // usually a bad file type (jpg or something), ignore
         } catch (TagException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();

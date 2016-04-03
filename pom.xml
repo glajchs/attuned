@@ -38,9 +38,13 @@
         </plugins>
     </build>
     <repositories>
+<!--         <repository> -->
+<!--             <id>swt-repo</id> -->
+<!--             <url>http://swt-maven.googlecode.com/git-history/master/</url> -->
+<!--         </repository> -->
         <repository>
-            <id>swt repo</id>
-            <url>http://swt-maven.googlecode.com/git-history/master/</url>
+            <id>swt-jface-repo</id>
+            <url>https://swt-repo.googlecode.com/svn/repo/</url>
         </repository>
     </repositories>
     <dependencies>
@@ -48,6 +52,11 @@
             <groupId>org.eclipse.swt</groupId>
             <artifactId>org.eclipse.swt.gtk.linux.x86_64</artifactId>
             <version>3.7.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jface</groupId>
+            <artifactId>org.eclipse.jface</artifactId>
+            <version>3.7.0.v20110928-1505</version>
         </dependency>
         <dependency>
             <groupId>net.java.dev.jna</groupId>

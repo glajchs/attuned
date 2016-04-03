@@ -7,12 +7,15 @@ import java.io.FileFilter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.swing.KeyStroke;
 
+import org.eclipse.jface.layout.TableColumnLayout;
+import org.eclipse.jface.viewers.ColumnWeightData;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.FocusEvent;
 import org.eclipse.swt.events.FocusListener;
@@ -27,6 +30,7 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Listener;
@@ -55,6 +59,9 @@ public class AttunedMainWindow {
     private Button volumeButton;
     public Scale trackSeek;
     private boolean manualPlaybackEvent = true;
+    private final Provider provider = Provider.getCurrentProvider(false);
+    private int currentPosition;
+    private ScheduledFuture<?> trackSeekFuture;
 
     class FileComparator implements Comparator<File> {
         public int compare(File file1, File file2) {
@@ -76,8 +83,9 @@ public class AttunedMainWindow {
 
     public AttunedMainWindow(final Display display) {
         shell = new Shell(display);
+        try {
         shell.setText("Attuned");
-        shell.setSize(600, 500);
+        shell.setSize(300, 500);
 
         Logger logger = Logger.getLogger("org.jaudiotagger");
         logger.setLevel(Level.WARNING);
@@ -172,8 +180,8 @@ public class AttunedMainWindow {
             }
 
             private void doTrackSeek(SelectionEvent e) {
-                theSoundPlayer.seek(ClockTime.fromSeconds(trackSeek
-                        .getSelection()));
+                currentPosition = trackSeek.getSelection();
+                theSoundPlayer.seek(ClockTime.fromSeconds(currentPosition));
             }
         });
 
@@ -222,8 +230,7 @@ public class AttunedMainWindow {
                 }
 
                 volumeSlider = new Scale(volumeShell, SWT.VERTICAL);
-                Point volumeSliderSize = volumeShell.computeSize(SWT.DEFAULT,
-                        SWT.DEFAULT);
+                Point volumeSliderSize = new Point(150, 20);
                 volumeSlider.setMinimum(0);
                 volumeSlider.addFocusListener(new VolumeShellFocusListener(
                         volumeShell));
@@ -264,41 +271,49 @@ public class AttunedMainWindow {
 
         volumeButton.addSelectionListener(new VolumeSelectionListener());
 
-        songTable = new Table(shell, SWT.MULTI | SWT.BORDER
-                | SWT.FULL_SELECTION);
+        Composite tableComposite = new Composite(shell, SWT.NONE);
+        songTable = new Table(tableComposite, SWT.MULTI | SWT.BORDER
+            | SWT.FULL_SELECTION);
         songTable.setLinesVisible(true);
         songTable.setHeaderVisible(true);
         GridData songTableGridData = new GridData(SWT.FILL, SWT.FILL, true,
                 true);
         songTableGridData.heightHint = 400;
+        songTableGridData.widthHint = 410;
         songTableGridData.horizontalSpan = 6;
         songTable.setLayoutData(songTableGridData);
 
-        TableColumn songNameColumn = new TableColumn(songTable, SWT.NONE);
-        songNameColumn.setText("Title");
-        songNameColumn.setMoveable(true);
-        TableColumn artistColumn = new TableColumn(songTable, SWT.NONE);
-        artistColumn.setText("Artist");
-        artistColumn.setMoveable(true);
-        TableColumn albumColumn = new TableColumn(songTable, SWT.NONE);
-        albumColumn.setText("Album");
-        albumColumn.setMoveable(true);
-        TableColumn trackNumberColumn = new TableColumn(songTable, SWT.NONE);
+        TableColumn trackNumberColumn = new TableColumn(songTable, SWT.RIGHT);
         trackNumberColumn.setText("Track #");
         trackNumberColumn.setMoveable(true);
+        TableColumn artistColumn = new TableColumn(songTable, SWT.LEFT);
+        artistColumn.setText("Artist");
+        artistColumn.setMoveable(true);
+        TableColumn albumColumn = new TableColumn(songTable, SWT.LEFT);
+        albumColumn.setText("Album");
+        albumColumn.setMoveable(true);
+        TableColumn songNameColumn = new TableColumn(songTable, SWT.LEFT);
+        songNameColumn.setText("Title");
+        songNameColumn.setMoveable(true);
 
-        File baseDir = new File("/media/Shared/Music");
-//        File baseDir = new File("/media/Shared/Music/Amazon MP3/Solar Fields/Jupiter Sessions");
-//        File baseDir = new File("/media/Shared/Music/iTunes/Tool");
+        File baseDir = new File("/media/scott/Shared/Music/Amazon MP3");
         recurseDirectory(baseDir, songTable);
 
-        songNameColumn.pack();
+        trackNumberColumn.pack();
         artistColumn.pack();
         albumColumn.pack();
-        trackNumberColumn.pack();
+        songNameColumn.pack();
 
         songTable.setSortColumn(songNameColumn);
         songTable.setSortDirection(SWT.UP);
+        TableColumnLayout tableLayout = new TableColumnLayout();
+        tableLayout.setColumnData(trackNumberColumn, new ColumnWeightData(0, 30, true));
+        tableLayout.setColumnData(artistColumn, new ColumnWeightData(20, 100, true));
+        tableLayout.setColumnData(albumColumn, new ColumnWeightData(15, 90, true));
+        tableLayout.setColumnData(songNameColumn, new ColumnWeightData(45, 150, true));
+        tableComposite.setLayout(tableLayout);
+        tableComposite.setLayoutData(songTableGridData);
+
 
         File[] directories = baseDir.listFiles(new DirectoryFileFilter());
         File[] songs = baseDir.listFiles(new NonDirectoryFileFilter());
@@ -326,30 +341,35 @@ public class AttunedMainWindow {
             }
         });
 
-        theSoundPlayer.connect(new PlayBin2.AUDIO_CHANGED() {
-            public void audioChanged(final PlayBin2 element) {
-                display.asyncExec(new Runnable() {
-                    public void run() {
-                        setupTrackSeekForSong();
-                        if (!manualPlaybackEvent) {
-                            int nextSongIndex = determineNextSongIndex();
-                            songTable.setSelection(nextSongIndex);
+            theSoundPlayer.connect(new PlayBin2.AUDIO_CHANGED() {
+                public void audioChanged(final PlayBin2 element) {
+                    display.asyncExec(new Runnable() {
+                        public void run() {
+                            setupTrackSeekForSong();
+                            if (!manualPlaybackEvent) {
+                                int nextSongIndex = determineNextSongIndex();
+                                songTable.setSelection(nextSongIndex);
+                            }
                         }
-                    }
-                });
-            }
-        });
+                    });
+                }
+            });
 
-        attachHotkeys();
-        while (!shell.isDisposed()) {
-            if (!display.readAndDispatch()) {
-                display.sleep();
+            attachHotkeys();
+            while (!shell.isDisposed()) {
+                if (!display.readAndDispatch()) {
+                    display.sleep();
+                }
+            }
+        } finally {
+            provider.reset();
+            if (!shell.isDisposed()) {
+                shell.dispose();
             }
         }
     }
 
     private void attachHotkeys() {
-        Provider provider = Provider.getCurrentProvider(false);
         provider.register(KeyStroke.getKeyStroke(KeyEvent.VK_F9,
                 InputEvent.ALT_DOWN_MASK), new HotKeyListener() {
             @Override
@@ -483,6 +503,7 @@ public class AttunedMainWindow {
     private void initPlayer() {
         Gst.init("AudioPlayer", new String[] { "" });
         theSoundPlayer = new PlayBin2("AudioPlayer");
+        theSoundPlayer.setVolumePercent(10);
     }
 
     class TrackSeeker implements Runnable {
@@ -525,7 +546,6 @@ public class AttunedMainWindow {
     private void playSongFromScratch(File song) {
         theSoundPlayer.stop();
         theSoundPlayer.setInputFile(song);
-        theSoundPlayer.setVolumePercent(10);
         theSoundPlayer.play();
         while (theSoundPlayer.queryDuration().toSeconds() <= 0) {
         }
@@ -536,14 +556,23 @@ public class AttunedMainWindow {
 
     private void setupTrackSeekForSong() {
         trackSeek.setMaximum((int) theSoundPlayer.queryDuration().toSeconds());
-        trackSeek
-                .setSelection((int) theSoundPlayer.queryPosition().toSeconds());
-        Gst.getScheduledExecutorService().scheduleAtFixedRate(new Runnable() {
+        currentPosition = (int) theSoundPlayer.queryPosition().toSeconds();
+        trackSeek.setSelection(currentPosition);
+        setupTrackSeekFuture();
+    }
+
+    private void setupTrackSeekFuture() {
+        if (trackSeekFuture != null) {
+            trackSeekFuture.cancel(true);
+        }
+        trackSeekFuture = Gst.getScheduledExecutorService().scheduleAtFixedRate(new Runnable() {
             public void run() {
                 Display.getDefault().asyncExec(new Runnable() {
                     public void run() {
-                        trackSeek.setSelection((int) theSoundPlayer
-                                .queryPosition().toSeconds());
+                        if (!trackSeek.isDisposed()) {
+                            currentPosition = (int) theSoundPlayer.queryPosition().toSeconds();
+                            trackSeek.setSelection(currentPosition);
+                        }
                     }
                 });
             }
@@ -606,21 +635,24 @@ public class AttunedMainWindow {
 
     private void seekBack() {
         int minTrackLength = trackSeek.getMinimum();
-        int currentPosition = trackSeek.getSelection();
         if (currentPosition - 5 <= minTrackLength) {
             theSoundPlayer.seek(minTrackLength, TimeUnit.SECONDS);
+            setupTrackSeekFuture();
         } else {
-            theSoundPlayer.seek(currentPosition - 5, TimeUnit.SECONDS);
+            currentPosition -= 5;
+            theSoundPlayer.seek(currentPosition, TimeUnit.SECONDS);
+            setupTrackSeekFuture();
         }
     }
 
     private void seekForward() {
         int maxTrackLength = trackSeek.getMaximum();
-        int currentPosition = trackSeek.getSelection();
         if (currentPosition + 5 >= maxTrackLength) {
             next();
         } else {
-            theSoundPlayer.seek(currentPosition + 5, TimeUnit.SECONDS);
+            currentPosition += 5;
+            theSoundPlayer.seek(currentPosition, TimeUnit.SECONDS);
+            setupTrackSeekFuture();
         }
     }
 
@@ -676,17 +708,19 @@ public class AttunedMainWindow {
                         event.doit = false;
                         break;
                     case SWT.TRAVERSE_RETURN:
-                        TableItem item = resultsTable.getSelection()[0];
-                        songTable.setSelection((Integer) item.getData("index"));
-                        playSongFromScratch(new File((String) item.getData("filename")));
-                        jumpToDialog.close();
-                        event.detail = SWT.TRAVERSE_NONE;
-                        event.doit = false;
+                        if (resultsTable.getSelection().length > 0) {
+                            TableItem item = resultsTable.getSelection()[0];
+                            songTable.setSelection((Integer) item.getData("index"));
+                            playSongFromScratch(new File((String) item.getData("filename")));
+                            jumpToDialog.close();
+                            event.detail = SWT.TRAVERSE_NONE;
+                            event.doit = false;
+                        }
                         break;
                 }
             }
         });
-        
+
         TableColumn songNameColumn = new TableColumn(resultsTable, SWT.NONE);
         songNameColumn.setText("Song");
         songNameColumn.pack();
@@ -730,13 +764,13 @@ public class AttunedMainWindow {
                         ArrayList<TableItem> albumNameOtherMatches = new ArrayList<TableItem>();
                         String search = searchText.getText();
                         for (TableItem tableItem : songTable.getItems()) {
-                            if (tableItem.getText(0).toLowerCase().startsWith(search)) {
+                            if (tableItem.getText(3).toLowerCase().startsWith(search)) {
                                 songNameStartsWithMatches.add(tableItem);
                             } else if (tableItem.getText(1).toLowerCase().startsWith(search)) {
                                 artistNameStartsWithMatches.add(tableItem);
                             } else if (tableItem.getText(2).toLowerCase().startsWith(search)) {
                                 albumNameStartsWithMatches.add(tableItem);
-                            } else if (tableItem.getText(0).toLowerCase().contains(search)) {
+                            } else if (tableItem.getText(3).toLowerCase().contains(search)) {
                                 songNameOtherMatches.add(tableItem);
                             } else if (tableItem.getText(1).toLowerCase().contains(search)) {
                                 artistNameOtherMatches.add(tableItem);
@@ -777,7 +811,7 @@ public class AttunedMainWindow {
     private void addItemsToList(ArrayList<TableItem> items, Table resultsTable) {
         for (TableItem tableItem : items) {
             TableItem item = new TableItem(resultsTable, SWT.NONE);
-            item.setText(0, tableItem.getText(0) + " - " + tableItem.getText(1) + " - " + tableItem.getText(2));
+            item.setText(0, tableItem.getText(3) + " - " + tableItem.getText(1) + " - " + tableItem.getText(2));
             item.setData("filename", tableItem.getData("filename"));
             item.setData("index", songTable.indexOf(tableItem));
         }
@@ -804,8 +838,13 @@ public class AttunedMainWindow {
 
     public static void main(String[] args) {
         display = new Display();
-        new AttunedMainWindow(display);
-        display.dispose();
+        try {
+            new AttunedMainWindow(display);
+        } finally {
+            display.dispose();
+        }
+
+        System.exit(0);
     }
 
     public void run() {
