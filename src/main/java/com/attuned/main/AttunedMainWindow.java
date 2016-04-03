@@ -40,10 +40,12 @@ import org.gstreamer.elements.PlayBin2;
 import com.tulskiy.keymaster.common.HotKey;
 import com.tulskiy.keymaster.common.HotKeyListener;
 import com.tulskiy.keymaster.common.Provider;
+import org.jaudiotagger.audio.mp3.MP3File;
 import org.jaudiotagger.tag.id3.AbstractTagItem;
 
 public class AttunedMainWindow {
     final private Table songTable;
+    private String musicLibraryFolder = "/media/scott/Shared/Music/Amazon MP3";;
     public PlayBin2 theSoundPlayer = null;
     private Button play;
     private static Display display;
@@ -132,13 +134,27 @@ public class AttunedMainWindow {
                 quit(shell);
             }
         });
-        helpAboutItem.addSelectionListener(new SelectionListener() {
+        fileOpenFolderItem.addSelectionListener(new SelectionListener() {
             public void widgetSelected(SelectionEvent event) {
+                openMusicLibraryFolder();
                 System.out.println("TODO: open music library folder.");
             }
-
             public void widgetDefaultSelected(SelectionEvent event) {
+                openMusicLibraryFolder();
                 System.out.println("TODO: open music library folder.");
+            }
+            private void openMusicLibraryFolder() {
+                DirectoryDialog directoryOpenDialog = new DirectoryDialog(shell);
+
+                directoryOpenDialog.setFilterPath(musicLibraryFolder);
+                directoryOpenDialog.setText("Music Library Folder");
+                directoryOpenDialog.setMessage("Select a directory");
+                String directoryString = directoryOpenDialog.open();
+                if (directoryString != null) {
+                    File directory = new File(directoryString);
+                    musicLibraryFolder = directoryString;
+                    readMusicLibraryFromFolder(directory);
+                }
             }
         });
 
@@ -362,9 +378,6 @@ public class AttunedMainWindow {
         songNameColumn.setText("Title");
         songNameColumn.setMoveable(true);
 
-        File baseDir = new File("/media/scott/Shared/Music/Amazon MP3");
-        recurseDirectory(baseDir, songTable);
-
         trackNumberColumn.pack();
         artistColumn.pack();
         albumColumn.pack();
@@ -380,11 +393,6 @@ public class AttunedMainWindow {
         tableComposite.setLayout(tableLayout);
         tableComposite.setLayoutData(songTableGridData);
 
-
-        File[] directories = baseDir.listFiles(new DirectoryFileFilter());
-        File[] songs = baseDir.listFiles(new NonDirectoryFileFilter());
-        Arrays.sort(directories, new FileComparator());
-        Arrays.sort(songs, new FileComparator());
 
         initPlayer();
         shell.pack();
@@ -422,6 +430,10 @@ public class AttunedMainWindow {
             });
 
             attachHotkeys();
+
+            File baseDir = new File(musicLibraryFolder);
+            readMusicLibraryFromFolder(baseDir);
+
             while (!shell.isDisposed()) {
                 if (!display.readAndDispatch()) {
                     display.sleep();
@@ -430,6 +442,15 @@ public class AttunedMainWindow {
         } finally {
             quit(shell);
         }
+    }
+
+    private void readMusicLibraryFromFolder(File baseDir) {
+        songTable.removeAll();
+        musicLibrary.resetMusicLibrary();
+        shufflePointer = 0;
+        shuffleHistory = new ArrayList<Integer>();
+        theSoundPlayer.stop();
+        recurseDirectory(baseDir, songTable);
     }
 
     private void attachHotkeys() {
@@ -905,7 +926,7 @@ public class AttunedMainWindow {
             }
         }
     }
-    
+
     private void addItemsToList(ArrayList<TableItem> items, Table resultsTable) {
         for (TableItem tableItem : items) {
             TableItem item = new TableItem(resultsTable, SWT.NONE);
@@ -948,6 +969,7 @@ public class AttunedMainWindow {
     private static void silenceThirdpartyLoggers() {
         Provider.logger.setLevel(Level.WARNING);
         AbstractTagItem.logger.setLevel(Level.SEVERE);
+        MP3File.logger.setLevel(Level.SEVERE);
     }
 
     public void run() {

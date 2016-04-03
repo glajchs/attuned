@@ -22,9 +22,14 @@ import org.jaudiotagger.tag.id3.ID3v24Frames;
 import org.jaudiotagger.tag.id3.ID3v24Tag;
 
 public class MusicLibrary {
-    ArrayList<Artist> artists = new ArrayList<Artist>();
+    private ArrayList<Artist> artists = new ArrayList<Artist>();
     private ArrayList<ID3v24Tag> idTags = new ArrayList<ID3v24Tag>();
-    
+
+    public void resetMusicLibrary() {
+        artists = new ArrayList<Artist>();
+        idTags = new ArrayList<ID3v24Tag>();
+    }
+
     public void addSongToLibrary(ID3v24Tag id3Tag, Table songTable, File song) {
         String artist = convertNullToEmpty(id3Tag.getFirst(ID3v24Frames.FRAME_ID_ARTIST));
         String album = convertNullToEmpty(id3Tag.getFirst(ID3v24Frames.FRAME_ID_ALBUM));
@@ -94,34 +99,4 @@ public class MusicLibrary {
             return value;
         }
     }
-
-    public void recurseDirectory(File currentDirectory, Table songTable) {
-        File[] directories = currentDirectory.listFiles(new DirectoryFileFilter());
-        File[] songs = currentDirectory.listFiles(new NonDirectoryFileFilter());
-        Arrays.sort(directories, new FileComparator());
-        Arrays.sort(songs, new FileComparator());
-        for (File directory : directories) {
-            recurseDirectory(directory, songTable);
-        }
-        for (File song : songs) {
-            parseSong(song, songTable);
-        }
-    }
-
-    class FileComparator implements Comparator<File> {
-        public int compare(File file1, File file2) {
-            return file1.getName().compareToIgnoreCase(file2.getName());
-        }
-    }
-    class DirectoryFileFilter implements FileFilter {
-        public boolean accept(File filename) {
-            return filename.isDirectory();
-        }
-    }
-    class NonDirectoryFileFilter implements FileFilter {
-        public boolean accept(File filename) {
-            return !filename.isDirectory();
-        }
-    }
-
 }
