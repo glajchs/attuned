@@ -5,6 +5,7 @@ import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -64,6 +65,9 @@ public class AttunedMainWindow {
     private List<Integer> shuffleHistory = new ArrayList<Integer>();
     private Integer shufflePointer = 0;
     private int volumePercent;
+    private Connection songDBConnection;
+    private String defaultPreferencesFolderString = System.getProperty("user.home") + System.getProperty("file.separator") +
+            ".config" + System.getProperty("file.separator") + "attuned" + System.getProperty("file.separator");;
 
     class FileComparator implements Comparator<File> {
         public int compare(File file1, File file2) {
@@ -118,8 +122,6 @@ public class AttunedMainWindow {
     }
 
     private PreferenceStore loadPreferenceStore() {
-        String defaultPreferencesFolderString = System.getProperty("user.home") + System.getProperty("file.separator") +
-                ".config" + System.getProperty("file.separator") + "attuned" + System.getProperty("file.separator");
         File defaultPreferencesFolder = new File(defaultPreferencesFolderString);
         defaultPreferencesFolder.mkdirs();
         PreferenceStore preferenceStore = new PreferenceStore(defaultPreferencesFolder.getAbsolutePath() + System.getProperty("file.separator") + "attuned.preferences");
@@ -140,6 +142,70 @@ public class AttunedMainWindow {
         } catch (IOException e) {
             // TODO: log here
         }
+    }
+
+    private void loadSongDB() {
+        if (songDBConnection == null) {
+            return;
+        }
+
+        PreparedStatement getSongsFromSongDBStatement;
+        try {
+            getSongsFromSongDBStatement = songDBConnection.prepareStatement("select * from songInfos");
+            ResultSet resultSet = getSongsFromSongDBStatement.executeQuery();
+            if (resultSet != null) {
+                while (resultSet.next()) {
+                    String trackNum = resultSet.getString("trackNum");
+                    String artist = resultSet.getString("artist");
+                    String album = resultSet.getString("album");
+                    String trackName = resultSet.getString("trackName");
+                    String filename = resultSet.getString("filename");
+                    musicLibrary.addSongToTable(trackNum, artist, album, trackName, filename, songTable);
+                }
+            }
+        } catch (SQLException e) {
+            return;
+        }
+    }
+
+    private void storeSongDB() {
+        if (songDBConnection == null) {
+            return;
+        }
+        ArrayList<SongEntry> songEntries = musicLibrary.getSongEntries();
+        if (songEntries.size() == 0) {
+            return;
+        }
+
+        PreparedStatement deleteFromSongDBStatement;
+        try {
+            deleteFromSongDBStatement = songDBConnection.prepareStatement("delete from songInfos");
+            deleteFromSongDBStatement.execute();
+        } catch (SQLException e) {
+            return;
+        }
+
+        PreparedStatement insertIntoSongDBStatement;
+        try {
+            insertIntoSongDBStatement = songDBConnection.prepareStatement("insert into songInfos (trackNum, artist, album, trackName, filename) values(?, ?, ?, ?, ?)");
+
+            for (SongEntry songEntry : songEntries) {
+                insertIntoSongDBStatement.setString(1, songEntry.trackNumber);
+                insertIntoSongDBStatement.setString(2, songEntry.artist);
+                insertIntoSongDBStatement.setString(3, songEntry.album);
+                insertIntoSongDBStatement.setString(4, songEntry.trackName);
+                insertIntoSongDBStatement.setString(5, songEntry.filename);
+                insertIntoSongDBStatement.addBatch();
+            }
+            insertIntoSongDBStatement.executeBatch();
+        } catch (SQLException e) {
+            return;
+        }
+
+//        musicLibrary.getSongEntries();
+//        musicLibrary.getArtists();
+//        musicLibrary.getIdTags();
+
     }
 
     private void setupMenus(final Shell shell) {
@@ -207,7 +273,22 @@ public class AttunedMainWindow {
     public AttunedMainWindow(final Display display) {
         shell = new Shell(display);
         try {
+        try {
+            songDBConnection = DriverManager.getConnection("jdbc:hsqldb:file:" + defaultPreferencesFolderString + "attunedSongDB", "SA", "");
+            String songDBCreateString = "CREATE TABLE IF NOT EXISTS SONGINFOS"
+                    + " (trackNum VARCHAR(10),"
+                    + "  artist VARCHAR(256),"
+                    + "  album VARCHAR(256),"
+                    + "  trackName VARCHAR(256),"
+                    + "  filename VARCHAR(1024))";
+            Statement createSongDBStatement = songDBConnection.createStatement();
+            createSongDBStatement.execute(songDBCreateString);
+        } catch (SQLException e) {
+            // TODO: log here
+        }
+
         loadPreferences();
+
         if (musicLibraryFolder == null) {
             musicLibraryFolder = "/media/scott/Shared/Music/Amazon MP3";
             storePreferences();
@@ -483,8 +564,7 @@ public class AttunedMainWindow {
 
             attachHotkeys();
 
-            File baseDir = new File(musicLibraryFolder);
-            readMusicLibraryFromFolder(baseDir);
+            loadSongDB();
 
             while (!shell.isDisposed()) {
                 if (!display.readAndDispatch()) {
@@ -503,6 +583,7 @@ public class AttunedMainWindow {
         shuffleHistory = new ArrayList<Integer>();
         theSoundPlayer.stop();
         recurseDirectory(baseDir, songTable);
+        storeSongDB();
     }
 
     private void attachHotkeys() {

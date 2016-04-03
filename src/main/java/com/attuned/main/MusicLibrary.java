@@ -22,12 +22,16 @@ import org.jaudiotagger.tag.id3.ID3v24Frames;
 import org.jaudiotagger.tag.id3.ID3v24Tag;
 
 public class MusicLibrary {
+    // artists isn't used yet
     private ArrayList<Artist> artists = new ArrayList<Artist>();
+    // idTags aren't used yet
     private ArrayList<ID3v24Tag> idTags = new ArrayList<ID3v24Tag>();
+    private ArrayList<SongEntry> songEntries = new ArrayList<SongEntry>();
 
     public void resetMusicLibrary() {
         artists = new ArrayList<Artist>();
         idTags = new ArrayList<ID3v24Tag>();
+        songEntries = new ArrayList<SongEntry>();
     }
 
     public void addSongToLibrary(ID3v24Tag id3Tag, Table songTable, File song) {
@@ -38,13 +42,9 @@ public class MusicLibrary {
             trackName = song.getName();
         }
         String trackNumber = convertNullToEmpty(id3Tag.getFirst(ID3v24Frames.FRAME_ID_TRACK));
-        
-        TableItem item = new TableItem(songTable, SWT.NONE);
-        item.setText(0, trackNumber);
-        item.setText(1, artist);
-        item.setText(2, album);
-        item.setText(3, trackName);
-        item.setData("filename", song.getAbsolutePath());
+
+        addSongToTable(trackNumber, artist, album, trackName, song.getAbsolutePath(), songTable);
+        songEntries.add(new SongEntry(trackNumber, artist, album, trackName, song.getAbsolutePath()));
         
         Artist currentArtistInLibrary = null;
         for (Artist currentArtistInLoop : artists) {
@@ -56,8 +56,27 @@ public class MusicLibrary {
             currentArtistInLibrary = new Artist(artist);
             artists.add(currentArtistInLibrary);
         }
+    }
 
-        
+    public void addSongToTable(String trackNumber, String artist, String album, String trackName, String filename, Table songTable) {
+        TableItem item = new TableItem(songTable, SWT.NONE);
+        item.setText(0, trackNumber);
+        item.setText(1, artist);
+        item.setText(2, album);
+        item.setText(3, trackName);
+        item.setData("filename", filename);
+    }
+
+    public ArrayList<Artist> getArtists() {
+        return artists;
+    }
+
+    public ArrayList<ID3v24Tag> getIdTags() {
+        return idTags;
+    }
+
+    public ArrayList<SongEntry> getSongEntries() {
+        return songEntries;
     }
 
     public void parseSong(File song, Table songTable) {
