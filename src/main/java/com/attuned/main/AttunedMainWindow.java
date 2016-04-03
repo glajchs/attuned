@@ -4,6 +4,7 @@ import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.FileFilter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -15,7 +16,9 @@ import java.util.logging.Logger;
 
 import javax.swing.KeyStroke;
 
+import com.google.common.base.Strings;
 import org.eclipse.jface.layout.TableColumnLayout;
+import org.eclipse.jface.preference.PreferenceStore;
 import org.eclipse.jface.viewers.ColumnWeightData;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.FocusEvent;
@@ -44,8 +47,8 @@ import org.jaudiotagger.audio.mp3.MP3File;
 import org.jaudiotagger.tag.id3.AbstractTagItem;
 
 public class AttunedMainWindow {
-    final private Table songTable;
-    private String musicLibraryFolder = "/media/scott/Shared/Music/Amazon MP3";;
+    private Table songTable;
+    private String musicLibraryFolder;
     public PlayBin2 theSoundPlayer = null;
     private Button play;
     private static Display display;
@@ -60,6 +63,7 @@ public class AttunedMainWindow {
     private boolean shuffle = false;
     private List<Integer> shuffleHistory = new ArrayList<Integer>();
     private Integer shufflePointer = 0;
+    private int volumePercent;
 
     class FileComparator implements Comparator<File> {
         public int compare(File file1, File file2) {
@@ -98,6 +102,43 @@ public class AttunedMainWindow {
                     System.exit(0);
                 }
             }
+        }
+    }
+
+    private void loadPreferences() {
+        PreferenceStore preferenceStore = loadPreferenceStore();
+        String musicLibraryFolderFromPreferences = preferenceStore.getString("musicLibraryFolder");
+        if (!Strings.isNullOrEmpty(musicLibraryFolderFromPreferences)) {
+            musicLibraryFolder = musicLibraryFolderFromPreferences;
+        }
+        int volumePercentPreferences = preferenceStore.getInt("volumePercent");
+        if (volumePercentPreferences > 0) {
+            volumePercent = volumePercentPreferences;
+        }
+    }
+
+    private PreferenceStore loadPreferenceStore() {
+        String defaultPreferencesFolderString = System.getProperty("user.home") + System.getProperty("file.separator") +
+                ".config" + System.getProperty("file.separator") + "attuned" + System.getProperty("file.separator");
+        File defaultPreferencesFolder = new File(defaultPreferencesFolderString);
+        defaultPreferencesFolder.mkdirs();
+        PreferenceStore preferenceStore = new PreferenceStore(defaultPreferencesFolder.getAbsolutePath() + System.getProperty("file.separator") + "attuned.preferences");
+        try {
+            preferenceStore.load();
+        } catch (IOException e) {
+            // Ignore
+        }
+        return preferenceStore;
+    }
+
+    private void storePreferences() {
+        PreferenceStore preferenceStore = loadPreferenceStore();
+        preferenceStore.setValue("musicLibraryFolder", musicLibraryFolder);
+        preferenceStore.setValue("volumePercent", volumePercent);
+        try {
+            preferenceStore.save();
+        } catch (IOException e) {
+            // TODO: log here
         }
     }
 
@@ -153,6 +194,7 @@ public class AttunedMainWindow {
                 if (directoryString != null) {
                     File directory = new File(directoryString);
                     musicLibraryFolder = directoryString;
+                    storePreferences();
                     readMusicLibraryFromFolder(directory);
                 }
             }
@@ -165,9 +207,18 @@ public class AttunedMainWindow {
     public AttunedMainWindow(final Display display) {
         shell = new Shell(display);
         try {
+        loadPreferences();
+        if (musicLibraryFolder == null) {
+            musicLibraryFolder = "/media/scott/Shared/Music/Amazon MP3";
+            storePreferences();
+        }
+        if (volumePercent == 0) {
+            volumePercent = 10;
+            storePreferences();
+        }
         setupMenus(shell);
         shell.setText("Attuned");
-        shell.setSize(300, 500);
+//        shell.setSize(300, 500);
 
         Logger logger = Logger.getLogger("org.jaudiotagger");
         logger.setLevel(Level.WARNING);
@@ -319,7 +370,7 @@ public class AttunedMainWindow {
                 volumeSlider.setMaximum(100);
                 volumeSlider.setIncrement(2);
                 volumeSlider.setPageIncrement(10);
-                volumeSlider.setSelection(90);
+                volumeSlider.setSelection(100 - theSoundPlayer.getVolumePercent());
                 volumeSlider.addSelectionListener(new SelectionListener() {
                     public void widgetSelected(SelectionEvent e) {
                         handleVolumeChange(e);
@@ -330,8 +381,9 @@ public class AttunedMainWindow {
                     }
 
                     private void handleVolumeChange(SelectionEvent e) {
-                        theSoundPlayer.setVolumePercent((100 - volumeSlider
-                                .getSelection()));
+                        volumePercent = (100 - volumeSlider.getSelection());
+                        theSoundPlayer.setVolumePercent(volumePercent);
+                        storePreferences();
                     }
                 });
                 Point volumeButtonLocation = ((Button) e.getSource())
@@ -587,7 +639,7 @@ public class AttunedMainWindow {
     private void initPlayer() {
         Gst.init("AudioPlayer", new String[] { "" });
         theSoundPlayer = new PlayBin2("AudioPlayer");
-        theSoundPlayer.setVolumePercent(10);
+        theSoundPlayer.setVolumePercent(volumePercent);
     }
 
     class TrackSeeker implements Runnable {
@@ -778,18 +830,26 @@ public class AttunedMainWindow {
     private void volumeUp() {
         int currentVolume = theSoundPlayer.getVolumePercent();
         if (currentVolume + 2 >= 100) {
-            theSoundPlayer.setVolumePercent(100);
+            volumePercent = 100;
+            theSoundPlayer.setVolumePercent(volumePercent);
+            storePreferences();
         } else {
-            theSoundPlayer.setVolumePercent(currentVolume + 2);
+            volumePercent = currentVolume + 2;
+            theSoundPlayer.setVolumePercent(volumePercent);
+            storePreferences();
         }
     }
 
     private void volumeDown() {
         int currentVolume = theSoundPlayer.getVolumePercent();
         if (currentVolume - 2 <= 0) {
-            theSoundPlayer.setVolumePercent(0);
+            volumePercent = 0;
+            theSoundPlayer.setVolumePercent(volumePercent);
+            storePreferences();
         } else {
-            theSoundPlayer.setVolumePercent(currentVolume - 2);
+            volumePercent = currentVolume - 2;
+            theSoundPlayer.setVolumePercent(volumePercent);
+            storePreferences();
         }
     }
 
