@@ -4,8 +4,6 @@ import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.FileFilter;
-import java.io.IOException;
-import java.sql.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -17,16 +15,11 @@ import java.util.logging.Logger;
 
 import javax.swing.KeyStroke;
 
-import com.google.common.base.Strings;
 import org.eclipse.jface.layout.TableColumnLayout;
-import org.eclipse.jface.preference.PreferenceStore;
 import org.eclipse.jface.viewers.ColumnWeightData;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.FocusEvent;
 import org.eclipse.swt.events.FocusListener;
-import org.eclipse.swt.events.KeyListener;
-import org.eclipse.swt.events.ModifyEvent;
-import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Image;
@@ -48,11 +41,11 @@ import org.jaudiotagger.audio.mp3.MP3File;
 import org.jaudiotagger.tag.id3.AbstractTagItem;
 
 public class AttunedMainWindow {
-    private Table songTable;
-    private String musicLibraryFolder;
+    public Table songTable;
+    public String musicLibraryFolder;
     public PlayBin2 theSoundPlayer = null;
     private Button play;
-    private static Display display;
+    public static Display display;
     private Shell shell;
     private Button volumeButton;
     public Scale trackSeek;
@@ -64,10 +57,9 @@ public class AttunedMainWindow {
     private boolean shuffle = false;
     private List<Integer> shuffleHistory = new ArrayList<Integer>();
     private Integer shufflePointer = 0;
-    private int volumePercent;
-    private Connection songDBConnection;
-    private String defaultPreferencesFolderString = System.getProperty("user.home") + System.getProperty("file.separator") +
-            ".config" + System.getProperty("file.separator") + "attuned" + System.getProperty("file.separator");;
+    public int volumePercent;
+    private static PreferencesAndSongDB preferencesAndSongDB;
+    private static JumpToSongDialog jumpToSongDialog;
 
     class FileComparator implements Comparator<File> {
         public int compare(File file1, File file2) {
@@ -107,105 +99,6 @@ public class AttunedMainWindow {
                 }
             }
         }
-    }
-
-    private void loadPreferences() {
-        PreferenceStore preferenceStore = loadPreferenceStore();
-        String musicLibraryFolderFromPreferences = preferenceStore.getString("musicLibraryFolder");
-        if (!Strings.isNullOrEmpty(musicLibraryFolderFromPreferences)) {
-            musicLibraryFolder = musicLibraryFolderFromPreferences;
-        }
-        int volumePercentPreferences = preferenceStore.getInt("volumePercent");
-        if (volumePercentPreferences > 0) {
-            volumePercent = volumePercentPreferences;
-        }
-    }
-
-    private PreferenceStore loadPreferenceStore() {
-        File defaultPreferencesFolder = new File(defaultPreferencesFolderString);
-        defaultPreferencesFolder.mkdirs();
-        PreferenceStore preferenceStore = new PreferenceStore(defaultPreferencesFolder.getAbsolutePath() + System.getProperty("file.separator") + "attuned.preferences");
-        try {
-            preferenceStore.load();
-        } catch (IOException e) {
-            // Ignore
-        }
-        return preferenceStore;
-    }
-
-    private void storePreferences() {
-        PreferenceStore preferenceStore = loadPreferenceStore();
-        preferenceStore.setValue("musicLibraryFolder", musicLibraryFolder);
-        preferenceStore.setValue("volumePercent", volumePercent);
-        try {
-            preferenceStore.save();
-        } catch (IOException e) {
-            // TODO: log here
-        }
-    }
-
-    private void loadSongDB() {
-        if (songDBConnection == null) {
-            return;
-        }
-
-        PreparedStatement getSongsFromSongDBStatement;
-        try {
-            getSongsFromSongDBStatement = songDBConnection.prepareStatement("select * from songInfos");
-            ResultSet resultSet = getSongsFromSongDBStatement.executeQuery();
-            if (resultSet != null) {
-                while (resultSet.next()) {
-                    String trackNum = resultSet.getString("trackNum");
-                    String artist = resultSet.getString("artist");
-                    String album = resultSet.getString("album");
-                    String trackName = resultSet.getString("trackName");
-                    String filename = resultSet.getString("filename");
-                    musicLibrary.addSongToTable(trackNum, artist, album, trackName, filename, songTable);
-                }
-            }
-        } catch (SQLException e) {
-            return;
-        }
-    }
-
-    private void storeSongDB() {
-        if (songDBConnection == null) {
-            return;
-        }
-        ArrayList<SongEntry> songEntries = musicLibrary.getSongEntries();
-        if (songEntries.size() == 0) {
-            return;
-        }
-
-        PreparedStatement deleteFromSongDBStatement;
-        try {
-            deleteFromSongDBStatement = songDBConnection.prepareStatement("delete from songInfos");
-            deleteFromSongDBStatement.execute();
-        } catch (SQLException e) {
-            return;
-        }
-
-        PreparedStatement insertIntoSongDBStatement;
-        try {
-            insertIntoSongDBStatement = songDBConnection.prepareStatement("insert into songInfos (trackNum, artist, album, trackName, filename) values(?, ?, ?, ?, ?)");
-
-            for (SongEntry songEntry : songEntries) {
-                insertIntoSongDBStatement.setString(1, songEntry.trackNumber);
-                insertIntoSongDBStatement.setString(2, songEntry.artist);
-                insertIntoSongDBStatement.setString(3, songEntry.album);
-                insertIntoSongDBStatement.setString(4, songEntry.trackName);
-                insertIntoSongDBStatement.setString(5, songEntry.filename);
-                insertIntoSongDBStatement.addBatch();
-            }
-            insertIntoSongDBStatement.executeBatch();
-        } catch (SQLException e) {
-            return;
-        }
-
-//        musicLibrary.getSongEntries();
-//        musicLibrary.getArtists();
-//        musicLibrary.getIdTags();
-
     }
 
     private void setupMenus(final Shell shell) {
@@ -260,7 +153,7 @@ public class AttunedMainWindow {
                 if (directoryString != null) {
                     File directory = new File(directoryString);
                     musicLibraryFolder = directoryString;
-                    storePreferences();
+                    preferencesAndSongDB.storePreferences();
                     readMusicLibraryFromFolder(directory);
                 }
             }
@@ -271,31 +164,20 @@ public class AttunedMainWindow {
 
 
     public AttunedMainWindow(final Display display) {
+        preferencesAndSongDB = new PreferencesAndSongDB(this);
+        jumpToSongDialog = new JumpToSongDialog(this);
         shell = new Shell(display);
         try {
-        try {
-            songDBConnection = DriverManager.getConnection("jdbc:hsqldb:file:" + defaultPreferencesFolderString + "attunedSongDB", "SA", "");
-            String songDBCreateString = "CREATE TABLE IF NOT EXISTS SONGINFOS"
-                    + " (trackNum VARCHAR(10),"
-                    + "  artist VARCHAR(256),"
-                    + "  album VARCHAR(256),"
-                    + "  trackName VARCHAR(256),"
-                    + "  filename VARCHAR(1024))";
-            Statement createSongDBStatement = songDBConnection.createStatement();
-            createSongDBStatement.execute(songDBCreateString);
-        } catch (SQLException e) {
-            // TODO: log here
-        }
-
-        loadPreferences();
+        preferencesAndSongDB.initializeSongDBConnection();
+        preferencesAndSongDB.loadPreferences();
 
         if (musicLibraryFolder == null) {
             musicLibraryFolder = "/media/scott/Shared/Music/Amazon MP3";
-            storePreferences();
+            preferencesAndSongDB.storePreferences();
         }
         if (volumePercent == 0) {
             volumePercent = 10;
-            storePreferences();
+            preferencesAndSongDB.storePreferences();
         }
         setupMenus(shell);
         shell.setText("Attuned");
@@ -464,7 +346,7 @@ public class AttunedMainWindow {
                     private void handleVolumeChange(SelectionEvent e) {
                         volumePercent = (100 - volumeSlider.getSelection());
                         theSoundPlayer.setVolumePercent(volumePercent);
-                        storePreferences();
+                        preferencesAndSongDB.storePreferences();
                     }
                 });
                 Point volumeButtonLocation = ((Button) e.getSource())
@@ -564,7 +446,7 @@ public class AttunedMainWindow {
 
             attachHotkeys();
 
-            loadSongDB();
+            preferencesAndSongDB.loadSongDB();
 
             while (!shell.isDisposed()) {
                 if (!display.readAndDispatch()) {
@@ -583,7 +465,7 @@ public class AttunedMainWindow {
         shuffleHistory = new ArrayList<Integer>();
         theSoundPlayer.stop();
         recurseDirectory(baseDir, songTable);
-        storeSongDB();
+        preferencesAndSongDB.storeSongDB();
     }
 
     private void attachHotkeys() {
@@ -710,7 +592,7 @@ public class AttunedMainWindow {
                     public void onHotKey(HotKey hotKey) {
                         display.asyncExec(new Runnable() {
                             public void run() {
-                                jumpTo();
+                                jumpToSongDialog.jumpTo();
                             }
                         });
                     }
@@ -760,7 +642,7 @@ public class AttunedMainWindow {
         }
     }
 
-    private void playSongFromScratch(File song) {
+    public void playSongFromScratch(File song) {
         theSoundPlayer.stop();
         theSoundPlayer.setInputFile(song);
         theSoundPlayer.play();
@@ -913,11 +795,11 @@ public class AttunedMainWindow {
         if (currentVolume + 2 >= 100) {
             volumePercent = 100;
             theSoundPlayer.setVolumePercent(volumePercent);
-            storePreferences();
+            preferencesAndSongDB.storePreferences();
         } else {
             volumePercent = currentVolume + 2;
             theSoundPlayer.setVolumePercent(volumePercent);
-            storePreferences();
+            preferencesAndSongDB.storePreferences();
         }
     }
 
@@ -926,11 +808,11 @@ public class AttunedMainWindow {
         if (currentVolume - 2 <= 0) {
             volumePercent = 0;
             theSoundPlayer.setVolumePercent(volumePercent);
-            storePreferences();
+            preferencesAndSongDB.storePreferences();
         } else {
             volumePercent = currentVolume - 2;
             theSoundPlayer.setVolumePercent(volumePercent);
-            storePreferences();
+            preferencesAndSongDB.storePreferences();
         }
     }
 
@@ -942,133 +824,7 @@ public class AttunedMainWindow {
         repeat = (!repeat);
     }
 
-    private void jumpTo() {
-        final Shell jumpToDialog = new Shell(display);
-        jumpToDialog.setText("Attuned - Jump To Song");
-        jumpToDialog.setSize(300, 200);
-
-        GridLayout gridLayout = new GridLayout(2, true);
-        gridLayout.numColumns = 1;
-        jumpToDialog.setLayout(gridLayout);
-        final Text searchText = new Text(jumpToDialog, SWT.NONE);
-        
-        final Table resultsTable = new Table(jumpToDialog, SWT.MULTI | SWT.BORDER
-                | SWT.FULL_SELECTION);
-        resultsTable.setLinesVisible(true);
-        resultsTable.setHeaderVisible(true);
-        resultsTable.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-
-        jumpToDialog.addListener(SWT.Traverse, new Listener() {
-            @Override
-            public void handleEvent(Event event) {
-                switch (event.detail) {
-                    case SWT.TRAVERSE_ESCAPE:
-                        jumpToDialog.close();
-                        event.detail = SWT.TRAVERSE_NONE;
-                        event.doit = false;
-                        break;
-                    case SWT.TRAVERSE_RETURN:
-                        if (resultsTable.getSelection().length > 0) {
-                            TableItem item = resultsTable.getSelection()[0];
-                            songTable.setSelection((Integer) item.getData("index"));
-                            playSongFromScratch(new File((String) item.getData("filename")));
-                            jumpToDialog.close();
-                            event.detail = SWT.TRAVERSE_NONE;
-                            event.doit = false;
-                        }
-                        break;
-                }
-            }
-        });
-
-        TableColumn songNameColumn = new TableColumn(resultsTable, SWT.NONE);
-        songNameColumn.setText("Song");
-        songNameColumn.pack();
-        
-        searchText.setLayoutData(new GridData(SWT.FILL, SWT.NONE, true, false));
-        searchText.addKeyListener(new KeyListener() {
-            
-            @Override
-            public void keyReleased(org.eclipse.swt.events.KeyEvent e) {
-                // TODO Auto-generated method stub
-                
-            }
-            
-            @Override
-            public void keyPressed(org.eclipse.swt.events.KeyEvent e) {
-                if (e.keyCode == SWT.ARROW_DOWN) {
-                    int selectionTable = resultsTable.getSelectionIndex();
-                    if (selectionTable + 1 < resultsTable.getItemCount()) {
-                        resultsTable.setSelection(selectionTable + 1);
-                    }
-                    
-                } else if (e.keyCode == SWT.ARROW_UP) {
-                    int selectionTable = resultsTable.getSelectionIndex();
-                    if (selectionTable > 0) {
-                        resultsTable.setSelection(selectionTable - 1);
-                    }
-                }
-            }
-        });
-        searchText.addModifyListener(new ModifyListener() {
-            @Override
-            public void modifyText(ModifyEvent e) {
-                display.asyncExec(new Runnable() {
-                    public void run() {
-                        ArrayList<TableItem> songNameStartsWithMatches = new ArrayList<TableItem>();
-                        ArrayList<TableItem> artistNameStartsWithMatches = new ArrayList<TableItem>();
-                        ArrayList<TableItem> albumNameStartsWithMatches = new ArrayList<TableItem>();
-                        ArrayList<TableItem> songNameOtherMatches = new ArrayList<TableItem>();
-                        ArrayList<TableItem> fileNameMatches = new ArrayList<TableItem>();
-                        ArrayList<TableItem> artistNameOtherMatches = new ArrayList<TableItem>();
-                        ArrayList<TableItem> albumNameOtherMatches = new ArrayList<TableItem>();
-                        String search = searchText.getText();
-                        for (TableItem tableItem : songTable.getItems()) {
-                            if (tableItem.getText(3).toLowerCase().startsWith(search)) {
-                                songNameStartsWithMatches.add(tableItem);
-                            } else if (tableItem.getText(1).toLowerCase().startsWith(search)) {
-                                artistNameStartsWithMatches.add(tableItem);
-                            } else if (tableItem.getText(2).toLowerCase().startsWith(search)) {
-                                albumNameStartsWithMatches.add(tableItem);
-                            } else if (tableItem.getText(3).toLowerCase().contains(search)) {
-                                songNameOtherMatches.add(tableItem);
-                            } else if (tableItem.getText(1).toLowerCase().contains(search)) {
-                                artistNameOtherMatches.add(tableItem);
-                            } else if (tableItem.getText(2).toLowerCase().contains(search)) {
-                                albumNameOtherMatches.add(tableItem);
-                            } else {
-                                String fileName = ((String) tableItem.getData("filename")).toLowerCase();
-                                if (fileName.contains("/")) {
-                                    fileName = fileName.substring(fileName.lastIndexOf("/"));
-                                }
-                                if (fileName.contains(search)) {
-                                    fileNameMatches.add(tableItem);
-                                }
-                            }
-                        }
-                        resultsTable.removeAll();
-                        addItemsToList(songNameStartsWithMatches, resultsTable);
-                        addItemsToList(artistNameStartsWithMatches, resultsTable);
-                        addItemsToList(albumNameStartsWithMatches, resultsTable);
-                        addItemsToList(songNameOtherMatches, resultsTable);
-                        addItemsToList(fileNameMatches, resultsTable);
-                        addItemsToList(artistNameOtherMatches, resultsTable);
-                        addItemsToList(albumNameOtherMatches, resultsTable);
-                        resultsTable.select(0);
-                    }
-                });
-            }
-        });
-
-        jumpToDialog.open();
-        while (!jumpToDialog.isDisposed()) {
-            if (!display.readAndDispatch()) {
-                display.sleep();
-            }
-        }
-    }
-
-    private void addItemsToList(ArrayList<TableItem> items, Table resultsTable) {
+    public void addItemsToList(ArrayList<TableItem> items, Table resultsTable) {
         for (TableItem tableItem : items) {
             TableItem item = new TableItem(resultsTable, SWT.NONE);
             item.setText(0, tableItem.getText(3) + " - " + tableItem.getText(1) + " - " + tableItem.getText(2));
