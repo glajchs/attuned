@@ -15,19 +15,24 @@ import java.util.logging.Logger;
 
 import javax.swing.KeyStroke;
 
+import com.patrikdufresne.fontawesome.FontAwesome;
 import org.eclipse.jface.layout.TableColumnLayout;
+import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.viewers.ColumnWeightData;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.FocusEvent;
 import org.eclipse.swt.events.FocusListener;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
-import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.graphics.*;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.*;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Menu;
+import org.eclipse.swt.widgets.MenuItem;
 import org.gstreamer.ClockTime;
 import org.gstreamer.ElementFactory;
 import org.gstreamer.Gst;
@@ -187,14 +192,13 @@ public class AttunedMainWindow {
         logger.setLevel(Level.WARNING);
 
         GridLayout gridLayout = new GridLayout();
-        gridLayout.numColumns = 6;
+        gridLayout.numColumns = 8;
         shell.setLayout(gridLayout);
 
         previous = new Button(shell, SWT.PUSH);
-        previous.setImage(new Image(
-                display,
-                Class.class
-                        .getResourceAsStream("/crystal_icons/backward/gif/backward-24.gif")));
+        previous.setFont(getFontAwesomeWithSize(16));
+        previous.setText(FontAwesome.backward);
+        previous.setForeground(new Color(display.getCurrent(), 36, 143, 187));
         previous.setLayoutData(new GridData(GridData.BEGINNING,
                 GridData.BEGINNING, false, false));
         previous.setSize(16, 16);
@@ -209,8 +213,9 @@ public class AttunedMainWindow {
         });
 
         play = new Button(shell, SWT.PUSH);
-        play.setImage(new Image(display, Class.class
-                .getResourceAsStream("/crystal_icons/play/gif/play-24.gif")));
+        play.setFont(getFontAwesomeWithSize(16));
+        play.setText(FontAwesome.play);
+        play.setForeground(new Color(display.getCurrent(), 36, 143, 187));
         play.setLayoutData(new GridData(GridData.FILL, GridData.FILL, false,
                 false));
         play.setSize(16, 16);
@@ -228,8 +233,9 @@ public class AttunedMainWindow {
         });
 
         stop = new Button(shell, SWT.PUSH);
-        stop.setImage(new Image(display, Class.class
-                .getResourceAsStream("/crystal_icons/stop/gif/stop-24.gif")));
+        stop.setFont(getFontAwesomeWithSize(16));
+        stop.setText(FontAwesome.stop);
+        stop.setForeground(new Color(display.getCurrent(), 36, 143, 187));
         stop.setLayoutData(new GridData(GridData.FILL, GridData.FILL, false,
                 false));
         stop.setSize(16, 16);
@@ -244,10 +250,9 @@ public class AttunedMainWindow {
         });
 
         next = new Button(shell, SWT.PUSH);
-        next.setImage(new Image(
-                display,
-                Class.class
-                        .getResourceAsStream("/crystal_icons/forward/gif/forward-24.gif")));
+        next.setFont(getFontAwesomeWithSize(16));
+        next.setText(FontAwesome.forward);
+        next.setForeground(new Color(display.getCurrent(), 36, 143, 187));
         next.setLayoutData(new GridData(GridData.FILL, GridData.FILL, false,
                 false));
         next.setSize(16, 16);
@@ -258,6 +263,40 @@ public class AttunedMainWindow {
 
             public void widgetDefaultSelected(SelectionEvent arg0) {
                 next();
+            }
+        });
+
+        shuffleButton = new Button(shell, SWT.PUSH);
+        shuffleButton.setFont(getFontAwesomeWithSize(16));
+        shuffleButton.setText(FontAwesome.random);
+        shuffleButton.setForeground(new Color(display.getCurrent(), 36, 143, 187));
+        shuffleButton.setLayoutData(new GridData(GridData.FILL, GridData.FILL, false,
+                false));
+        shuffleButton.setSize(16, 16);
+        shuffleButton.addSelectionListener(new SelectionListener() {
+            public void widgetSelected(SelectionEvent arg0) {
+                toggleShuffle();
+            }
+
+            public void widgetDefaultSelected(SelectionEvent arg0) {
+                toggleShuffle();
+            }
+        });
+
+        repeatButton = new Button(shell, SWT.PUSH);
+        repeatButton.setFont(getFontAwesomeWithSize(16));
+        repeatButton.setText(FontAwesome.repeat);
+        repeatButton.setForeground(new Color(display.getCurrent(), 36, 143, 187));
+        repeatButton.setLayoutData(new GridData(GridData.FILL, GridData.FILL, false,
+                false));
+        repeatButton.setSize(16, 16);
+        repeatButton.addSelectionListener(new SelectionListener() {
+            public void widgetSelected(SelectionEvent arg0) {
+                toggleRepeat();
+            }
+
+            public void widgetDefaultSelected(SelectionEvent arg0) {
+                toggleRepeat();
             }
         });
 
@@ -282,11 +321,9 @@ public class AttunedMainWindow {
         });
 
         volumeButton = new Button(shell, SWT.PUSH);
-        volumeButton
-                .setImage(new Image(
-                        display,
-                        Class.class
-                                .getResourceAsStream("/kde_crystal_diamond_icons/16x16/actions/player_volume.png")));
+        volumeButton.setFont(getFontAwesomeWithSize(16));
+        volumeButton.setText(FontAwesome.volume_up);
+        volumeButton.setForeground(new Color(display.getCurrent(), 36, 143, 187));
         volumeButton.setLayoutData(new GridData(GridData.END, GridData.FILL,
                 false, false));
         volumeButton.setSize(16, 16);
@@ -377,7 +414,7 @@ public class AttunedMainWindow {
                 true);
         songTableGridData.heightHint = 400;
         songTableGridData.widthHint = 410;
-        songTableGridData.horizontalSpan = 6;
+        songTableGridData.horizontalSpan = 8;
         songTable.setLayoutData(songTableGridData);
 
         TableColumn trackNumberColumn = new TableColumn(songTable, SWT.RIGHT);
@@ -447,6 +484,9 @@ public class AttunedMainWindow {
             attachHotkeys();
 
             preferencesAndSongDB.loadSongDB();
+
+            // Set focus on the first table row on startup, instead of on the "back" button, which just happens to be the first UI control.
+            songTable.setFocus();
 
             while (!shell.isDisposed()) {
                 if (!display.readAndDispatch()) {
@@ -605,17 +645,6 @@ public class AttunedMainWindow {
         theSoundPlayer.setVolumePercent(volumePercent);
     }
 
-    class TrackSeeker implements Runnable {
-        public void run() {
-            Display.getDefault().asyncExec(new Runnable() {
-                public void run() {
-                    trackSeek.setSelection((int) theSoundPlayer.queryPosition()
-                            .toSeconds());
-                }
-            });
-        }
-    }
-
     private void playSong() {
         manualPlaybackEvent = true;
         TableItem[] selectedItems = songTable.getSelection();
@@ -629,14 +658,10 @@ public class AttunedMainWindow {
 
         if (theSoundPlayer.isPlaying()) {
             theSoundPlayer.pause();
-            play.setImage(new Image(display, Class.class
-                    .getResourceAsStream("/crystal_icons/play/gif/play-24.gif")));
+            play.setText(FontAwesome.play);
         } else if (theSoundPlayer.getState() == State.PAUSED) {
             theSoundPlayer.play();
-            play.setImage(new Image(
-                    display,
-                    Class.class
-                            .getResourceAsStream("/crystal_icons/pause/gif/pause-24.gif")));
+            play.setText(FontAwesome.pause);
         } else {
             playSongFromScratch(song);
         }
@@ -649,8 +674,7 @@ public class AttunedMainWindow {
         while (theSoundPlayer.queryDuration().toSeconds() <= 0) {
         }
         setupTrackSeekForSong();
-        play.setImage(new Image(display, Class.class
-                .getResourceAsStream("/crystal_icons/pause/gif/32.gif")));
+        play.setText(FontAwesome.pause);
     }
 
     private void setupTrackSeekForSong() {
@@ -762,8 +786,7 @@ public class AttunedMainWindow {
     }
 
     private void stopSong() {
-        play.setImage(new Image(display, Class.class
-                .getResourceAsStream("/crystal_icons/play/gif/32.gif")));
+        play.setText(FontAwesome.play);
         theSoundPlayer.stop();
     }
 
@@ -817,12 +840,59 @@ public class AttunedMainWindow {
     }
 
     private void toggleShuffle() {
+        if (shuffle) {
+            shuffleButton.setForeground(new Color(display.getCurrent(), 36, 143, 187));
+            shuffleButton.setFont(getFontAwesomeWithSize(16));
+        } else {
+            shuffleButton.setForeground(new Color(display.getCurrent(), 0, 128, 0));
+            shuffleButton.setFont(getFontAwesomeWithStyleAndSize(SWT.BOLD, 16));
+        }
         shuffle = (!shuffle);
     }
 
     private void toggleRepeat() {
+        if (repeat) {
+            repeatButton.setForeground(new Color(display.getCurrent(), 36, 143, 187));
+            repeatButton.setFont(getFontAwesomeWithSize(16));
+        } else {
+            repeatButton.setForeground(new Color(display.getCurrent(), 0, 128, 0));
+            repeatButton.setFont(getFontAwesomeWithStyleAndSize(SWT.BOLD, 16));
+        }
         repeat = (!repeat);
     }
+
+    /****** START I should contribute this back to https://github.com/ikus060/fontawesome/ ******/
+    public Font getFontAwesomeWithStyleAndSize(int style, int size) {
+        String name = "FONTAWESOME" + "_style_" + style + "_size_" + size;
+        return getFontWithName(name, style, size);
+    }
+
+    public Font getFontAwesomeWithStyle(int style) {
+        String name = "FONTAWESOME" + "_style_" + style;
+        return getFontWithName(name, style, null);
+    }
+
+    public Font getFontAwesomeWithSize(int size) {
+        String name = "FONTAWESOME" + "_size_" + size;
+        return getFontWithName(name, null, size);
+    }
+
+    private Font getFontWithName(String name, Integer style, Integer size) {
+        if (!JFaceResources.getFontRegistry().hasValueFor(name)) {
+            FontData[] data = FontAwesome.getFont().getFontData();
+            for (FontData d : data) {
+                if (style != null) {
+                    d.setStyle(style);
+                }
+                if (size != null) {
+                    d.setHeight(size);
+                }
+            }
+            JFaceResources.getFontRegistry().put(name, data);
+        }
+        return JFaceResources.getFontRegistry().get(name);
+    }
+    /****** END I should contribute this back to https://github.com/ikus060/fontawesome/ ******/
 
     public void addItemsToList(ArrayList<TableItem> items, Table resultsTable) {
         for (TableItem tableItem : items) {
@@ -851,6 +921,8 @@ public class AttunedMainWindow {
     private Button stop;
     private Button previous;
     private Button next;
+    private Button shuffleButton;
+    private Button repeatButton;
 
     public static void main(String[] args) {
         silenceThirdpartyLoggers();

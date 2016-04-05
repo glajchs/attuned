@@ -47,8 +47,17 @@
             <id>swt-jface-repo</id>
             <url>https://swt-repo.googlecode.com/svn/repo/</url>
         </repository>
+        <repository>
+            <id>patrikdufresne</id>
+            <url>http://nexus.patrikdufresne.com/content/groups/public/</url>
+        </repository>
     </repositories>
     <dependencies>
+        <dependency>
+            <groupId>com.patrikdufresne</groupId>
+            <artifactId>com.patrikdufresne.fontawesome</artifactId>
+            <version>4.3.0-1</version>
+        </dependency>
         <dependency>
             <groupId>org.eclipse.swt</groupId>
             <artifactId>org.eclipse.swt.gtk.linux.x86_64</artifactId>
