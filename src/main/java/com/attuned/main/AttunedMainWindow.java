@@ -457,7 +457,7 @@ public class AttunedMainWindow {
                 display.asyncExec(new Runnable() {
                     public void run() {
                         TableItem nextItem = songTable
-                                .getItem(determineNextSongIndex());
+                                .getItem(determineNextSongIndex(false));
                         songTable.setSelection(nextItem);
                         File song = new File((String) nextItem
                                 .getData("filename"));
@@ -473,7 +473,7 @@ public class AttunedMainWindow {
                         public void run() {
                             setupTrackSeekForSong();
                             if (!manualPlaybackEvent) {
-                                int nextSongIndex = determineNextSongIndex();
+                                int nextSongIndex = determineNextSongIndex(false);
                                 songTable.setSelection(nextSongIndex);
                             }
                         }
@@ -704,7 +704,7 @@ public class AttunedMainWindow {
 
     private void next() {
         manualPlaybackEvent = true;
-        int nextItemIndex = determineNextSongIndex();
+        int nextItemIndex = determineNextSongIndex(true);
         songTable.setSelection(nextItemIndex);
         TableItem nextItem = songTable.getItem(nextItemIndex);
         File song = new File((String) nextItem.getData("filename"));
@@ -721,7 +721,7 @@ public class AttunedMainWindow {
         return newShuffleIndex;
     }
 
-    private int determineNextSongIndex() {
+    private int determineNextSongIndex(boolean ignoreRepeat) {
         if (shuffle) {
             if (shufflePointer + 1 < shuffleHistory.size()) {
                 shufflePointer++;
@@ -733,7 +733,7 @@ public class AttunedMainWindow {
         int[] selectedItemIndicies = songTable.getSelectionIndices();
         if (selectedItemIndicies.length > 0) {
             int nextItemIndex;
-            if (repeat) {
+            if (repeat && !ignoreRepeat) {
                 nextItemIndex = selectedItemIndicies[0];
             } else {
                 nextItemIndex = selectedItemIndicies[0] + 1;
@@ -760,11 +760,7 @@ public class AttunedMainWindow {
         int[] selectedItemIndicies = songTable.getSelectionIndices();
         if (selectedItemIndicies.length > 0) {
             int previousItemIndex;
-            if (repeat) {
-                previousItemIndex = selectedItemIndicies[0];
-            } else {
-                previousItemIndex = selectedItemIndicies[0] - 1;
-            }
+            previousItemIndex = selectedItemIndicies[0] - 1;
             if (previousItemIndex < 0) {
                 previousItemIndex = songTable.getItemCount() - 1;
             }
