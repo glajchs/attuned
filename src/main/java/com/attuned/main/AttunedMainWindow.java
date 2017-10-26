@@ -33,11 +33,11 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
-import org.gstreamer.ClockTime;
-import org.gstreamer.ElementFactory;
-import org.gstreamer.Gst;
-import org.gstreamer.State;
-import org.gstreamer.elements.PlayBin2;
+import org.freedesktop.gstreamer.ClockTime;
+import org.freedesktop.gstreamer.ElementFactory;
+import org.freedesktop.gstreamer.Gst;
+import org.freedesktop.gstreamer.State;
+import org.freedesktop.gstreamer.elements.PlayBin;
 
 import com.tulskiy.keymaster.common.HotKey;
 import com.tulskiy.keymaster.common.HotKeyListener;
@@ -49,7 +49,7 @@ import org.jaudiotagger.tag.id3.AbstractTagItem;
 public class AttunedMainWindow {
     public Table songTable;
     public String musicLibraryFolder;
-    public PlayBin2 theSoundPlayer = null;
+    public PlayBin theSoundPlayer = null;
     private Button play;
     public static Display display;
     private Shell shell;
@@ -453,8 +453,8 @@ public class AttunedMainWindow {
 
         theSoundPlayer.setVideoSink(ElementFactory
                 .make("fakesink", "videosink"));
-        theSoundPlayer.connect(new PlayBin2.ABOUT_TO_FINISH() {
-            public void aboutToFinish(final PlayBin2 element) {
+        theSoundPlayer.connect(new PlayBin.ABOUT_TO_FINISH() {
+            public void aboutToFinish(final PlayBin element) {
                 display.asyncExec(new Runnable() {
                     public void run() {
                         TableItem nextItem = songTable
@@ -468,8 +468,8 @@ public class AttunedMainWindow {
             }
         });
 
-            theSoundPlayer.connect(new PlayBin2.AUDIO_CHANGED() {
-                public void audioChanged(final PlayBin2 element) {
+            theSoundPlayer.connect(new PlayBin.AUDIO_CHANGED() {
+                public void audioChanged(final PlayBin element) {
                     display.asyncExec(new Runnable() {
                         public void run() {
                             setupTrackSeekForSong();
@@ -644,7 +644,7 @@ public class AttunedMainWindow {
 
     private void initPlayer() {
         Gst.init("AudioPlayer", new String[] { "" });
-        theSoundPlayer = new PlayBin2("AudioPlayer");
+        theSoundPlayer = new PlayBin("AudioPlayer");
         theSoundPlayer.setVolumePercent(volumePercent);
     }
 
@@ -674,7 +674,7 @@ public class AttunedMainWindow {
         theSoundPlayer.stop();
         theSoundPlayer.setInputFile(song);
         theSoundPlayer.play();
-        while (theSoundPlayer.queryDuration().toSeconds() <= 0) {
+        while (theSoundPlayer.queryDuration(TimeUnit.MILLISECONDS) <= 0) {
         }
         setupTrackSeekForSong();
         play.setText(FontAwesome.pause);
@@ -935,7 +935,7 @@ public class AttunedMainWindow {
     }
 
     private static void silenceThirdpartyLoggers() {
-        Provider.logger.setLevel(Level.WARNING);
+        // TODO: Log a bug with the keybinding provider to allow us to lower or silence their logging
         AbstractTagItem.logger.setLevel(Level.SEVERE);
         MP3File.logger.setLevel(Level.SEVERE);
     }
