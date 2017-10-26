@@ -45,7 +45,7 @@ import com.tulskiy.keymaster.common.Provider;
 import org.jaudiotagger.audio.mp3.MP3File;
 import org.jaudiotagger.tag.id3.AbstractTagItem;
 
-// Requires libgstreamer0.10-dev and libgstreamer-plugins-base0.10-dev packages
+// Requires libgstreamer1.0-0 and libgstreamer-plugins-base1.0-0 packages
 public class AttunedMainWindow {
     public Table songTable;
     public String musicLibraryFolder;

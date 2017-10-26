@@ -17,7 +17,6 @@
     <orderEntry type="library" name="Maven: org.eclipse.osgi:org.eclipse.osgi:3.8.0.v20120529-1548" level="project" />
     <orderEntry type="library" name="Maven: org.eclipse.swt:org.eclipse.swt.gtk.linux.x86_64:3.7.2" level="project" />
     <orderEntry type="library" name="Maven: net.java.dev.jna:jna:4.5.0" level="project" />
-    <orderEntry type="library" name="Maven: net.java.dev.jna:jna-platform:4.5.0" level="project" />
     <orderEntry type="library" name="Maven: net.java.dev.jna:platform:3.5.2" level="project" />
     <orderEntry type="library" name="Maven: commons-lang:commons-lang:2.6" level="project" />
     <orderEntry type="library" name="Maven: com.github.tulskiy:jkeymaster:1.2" level="project" />
