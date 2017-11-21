@@ -22,6 +22,7 @@ public class JumpToSongDialog {
         final Shell jumpToDialog = new Shell(AttunedMainWindow.display);
         jumpToDialog.setText("Attuned - Jump To Song");
         jumpToDialog.setSize(300, 200);
+        jumpToDialog.setImage(attunedMainWindow.attunedIconImage);
 
         GridLayout gridLayout = new GridLayout(2, true);
         gridLayout.numColumns = 1;

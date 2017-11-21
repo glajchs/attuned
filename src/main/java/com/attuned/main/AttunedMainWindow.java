@@ -66,6 +66,8 @@ public class AttunedMainWindow {
     public int volumePercent;
     private static PreferencesAndSongDB preferencesAndSongDB;
     private static JumpToSongDialog jumpToSongDialog;
+    // PNG taken from the font awesome music icon.  "Font Awesome by Dave Gandy - http://fontawesome.io"
+    public final Image attunedIconImage;
 
     class FileComparator implements Comparator<File> {
         public int compare(File file1, File file2) {
@@ -171,302 +173,306 @@ public class AttunedMainWindow {
 
     public AttunedMainWindow(final Display display) {
         preferencesAndSongDB = new PreferencesAndSongDB(this);
+        attunedIconImage =
+                new Image(display, AttunedMainWindow.class.getClassLoader().getResourceAsStream("attuned_icon.png"));
         jumpToSongDialog = new JumpToSongDialog(this);
         shell = new Shell(display);
+        shell.setImage(attunedIconImage);
+
         try {
-        preferencesAndSongDB.initializeSongDBConnection();
-        preferencesAndSongDB.loadPreferences();
+            preferencesAndSongDB.initializeSongDBConnection();
+            preferencesAndSongDB.loadPreferences();
 
-        if (musicLibraryFolder == null) {
-            musicLibraryFolder = "/media/scott/Shared/Music/Amazon MP3";
-            preferencesAndSongDB.storePreferences();
-        }
-        if (volumePercent == 0) {
-            volumePercent = 10;
-            preferencesAndSongDB.storePreferences();
-        }
-        setupMenus(shell);
-        shell.setText("Attuned");
-//        shell.setSize(300, 500);
-
-        Logger logger = Logger.getLogger("org.jaudiotagger");
-        logger.setLevel(Level.WARNING);
-
-        GridLayout gridLayout = new GridLayout();
-        gridLayout.numColumns = 8;
-        shell.setLayout(gridLayout);
-
-        previous = new Button(shell, SWT.PUSH);
-        previous.setFont(getFontAwesomeWithSize(16));
-        previous.setText(FontAwesome.backward);
-        previous.setForeground(new Color(display.getCurrent(), 36, 143, 187));
-        previous.setLayoutData(new GridData(GridData.BEGINNING,
-                GridData.BEGINNING, false, false));
-        previous.setSize(16, 16);
-        previous.addSelectionListener(new SelectionListener() {
-            public void widgetSelected(SelectionEvent arg0) {
-                previous();
+            if (musicLibraryFolder == null) {
+                musicLibraryFolder = "/media/scott/Shared/Music/Amazon MP3";
+                preferencesAndSongDB.storePreferences();
             }
-
-            public void widgetDefaultSelected(SelectionEvent arg0) {
-                previous();
+            if (volumePercent == 0) {
+                volumePercent = 10;
+                preferencesAndSongDB.storePreferences();
             }
-        });
+            setupMenus(shell);
+            shell.setText("Attuned");
+    //        shell.setSize(300, 500);
 
-        play = new Button(shell, SWT.PUSH);
-        play.setFont(getFontAwesomeWithSize(16));
-        play.setText(FontAwesome.play);
-        play.setForeground(new Color(display.getCurrent(), 36, 143, 187));
-        play.setLayoutData(new GridData(GridData.FILL, GridData.FILL, false,
-                false));
-        play.setSize(16, 16);
-        play.addSelectionListener(new SelectionListener() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                playSong();
-            }
+            Logger logger = Logger.getLogger("org.jaudiotagger");
+            logger.setLevel(Level.WARNING);
 
-            @Override
-            public void widgetDefaultSelected(SelectionEvent e) {
-                playSong();
-            }
+            GridLayout gridLayout = new GridLayout();
+            gridLayout.numColumns = 8;
+            shell.setLayout(gridLayout);
 
-        });
-
-        stop = new Button(shell, SWT.PUSH);
-        stop.setFont(getFontAwesomeWithSize(16));
-        stop.setText(FontAwesome.stop);
-        stop.setForeground(new Color(display.getCurrent(), 36, 143, 187));
-        stop.setLayoutData(new GridData(GridData.FILL, GridData.FILL, false,
-                false));
-        stop.setSize(16, 16);
-        stop.addSelectionListener(new SelectionListener() {
-            public void widgetSelected(SelectionEvent arg0) {
-                stopSong();
-            }
-
-            public void widgetDefaultSelected(SelectionEvent arg0) {
-                stopSong();
-            }
-        });
-
-        next = new Button(shell, SWT.PUSH);
-        next.setFont(getFontAwesomeWithSize(16));
-        next.setText(FontAwesome.forward);
-        next.setForeground(new Color(display.getCurrent(), 36, 143, 187));
-        next.setLayoutData(new GridData(GridData.FILL, GridData.FILL, false,
-                false));
-        next.setSize(16, 16);
-        next.addSelectionListener(new SelectionListener() {
-            public void widgetSelected(SelectionEvent arg0) {
-                next();
-            }
-
-            public void widgetDefaultSelected(SelectionEvent arg0) {
-                next();
-            }
-        });
-
-        shuffleButton = new Button(shell, SWT.PUSH);
-        shuffleButton.setFont(getFontAwesomeWithSize(16));
-        shuffleButton.setText(FontAwesome.random);
-        shuffleButton.setForeground(new Color(display.getCurrent(), 36, 143, 187));
-        shuffleButton.setLayoutData(new GridData(GridData.FILL, GridData.FILL, false,
-                false));
-        shuffleButton.setSize(16, 16);
-        shuffleButton.addSelectionListener(new SelectionListener() {
-            public void widgetSelected(SelectionEvent arg0) {
-                toggleShuffle();
-            }
-
-            public void widgetDefaultSelected(SelectionEvent arg0) {
-                toggleShuffle();
-            }
-        });
-
-        repeatButton = new Button(shell, SWT.PUSH);
-        repeatButton.setFont(getFontAwesomeWithSize(16));
-        repeatButton.setText(FontAwesome.repeat);
-        repeatButton.setForeground(new Color(display.getCurrent(), 36, 143, 187));
-        repeatButton.setLayoutData(new GridData(GridData.FILL, GridData.FILL, false,
-                false));
-        repeatButton.setSize(16, 16);
-        repeatButton.addSelectionListener(new SelectionListener() {
-            public void widgetSelected(SelectionEvent arg0) {
-                toggleRepeat();
-            }
-
-            public void widgetDefaultSelected(SelectionEvent arg0) {
-                toggleRepeat();
-            }
-        });
-
-        trackSeek = new Scale(shell, SWT.HORIZONTAL);
-        trackSeek.setLayoutData(new GridData(GridData.FILL, GridData.FILL,
-                true, false));
-        trackSeek.setPageIncrement(5);
-        trackSeek.setMinimum(0);
-        trackSeek.addSelectionListener(new SelectionListener() {
-            public void widgetSelected(SelectionEvent e) {
-                doTrackSeek(e);
-            }
-
-            public void widgetDefaultSelected(SelectionEvent e) {
-                doTrackSeek(e);
-            }
-
-            private void doTrackSeek(SelectionEvent e) {
-                currentPosition = trackSeek.getSelection();
-                theSoundPlayer.seek(ClockTime.fromSeconds(currentPosition));
-            }
-        });
-
-        volumeButton = new Button(shell, SWT.PUSH);
-        volumeButton.setFont(getFontAwesomeWithSize(16));
-        volumeButton.setText(FontAwesome.volume_up);
-        volumeButton.setForeground(new Color(display.getCurrent(), 36, 143, 187));
-        volumeButton.setLayoutData(new GridData(GridData.END, GridData.FILL,
-                false, false));
-        volumeButton.setSize(16, 16);
-
-        class VolumeSelectionListener implements SelectionListener {
-            private Scale volumeSlider;
-
-            public VolumeSelectionListener() {
-            }
-
-            public void widgetSelected(SelectionEvent e) {
-                createVolumeSlider(e);
-            }
-
-            public void widgetDefaultSelected(SelectionEvent e) {
-                createVolumeSlider(e);
-            }
-
-            private void createVolumeSlider(SelectionEvent e) {
-                Shell volumeShell = new Shell(shell, SWT.NO_FOCUS | SWT.NO_TRIM);
-                volumeShell.setLayout(new RowLayout());
-
-                class VolumeShellFocusListener implements FocusListener {
-                    Shell myVolumeshell;
-
-                    public VolumeShellFocusListener(Shell myVolumeshell) {
-                        this.myVolumeshell = myVolumeshell;
-                    }
-
-                    public void focusGained(FocusEvent e) {
-                    }
-
-                    public void focusLost(FocusEvent e) {
-                        myVolumeshell.close();
-                    }
-
+            previous = new Button(shell, SWT.PUSH);
+            previous.setFont(getFontAwesomeWithSize(16));
+            previous.setText(FontAwesome.backward);
+            previous.setForeground(new Color(display.getCurrent(), 36, 143, 187));
+            previous.setLayoutData(new GridData(GridData.BEGINNING,
+                    GridData.BEGINNING, false, false));
+            previous.setSize(16, 16);
+            previous.addSelectionListener(new SelectionListener() {
+                public void widgetSelected(SelectionEvent arg0) {
+                    previous();
                 }
 
-                volumeSlider = new Scale(volumeShell, SWT.VERTICAL);
-                Point volumeSliderSize = new Point(150, 20);
-                volumeSlider.setMinimum(0);
-                volumeSlider.addFocusListener(new VolumeShellFocusListener(
-                        volumeShell));
-                volumeSlider.setMaximum(100);
-                volumeSlider.setIncrement(2);
-                volumeSlider.setPageIncrement(10);
-                volumeSlider.setSelection(100 - theSoundPlayer.getVolumePercent());
-                volumeSlider.addSelectionListener(new SelectionListener() {
-                    public void widgetSelected(SelectionEvent e) {
-                        handleVolumeChange(e);
-                    }
+                public void widgetDefaultSelected(SelectionEvent arg0) {
+                    previous();
+                }
+            });
 
-                    public void widgetDefaultSelected(SelectionEvent e) {
-                        handleVolumeChange(e);
-                    }
-
-                    private void handleVolumeChange(SelectionEvent e) {
-                        volumePercent = (100 - volumeSlider.getSelection());
-                        theSoundPlayer.setVolumePercent(volumePercent);
-                        preferencesAndSongDB.storePreferences();
-                    }
-                });
-                Point volumeButtonLocation = ((Button) e.getSource())
-                        .toDisplay(0, 0);
-                Point finalVolumeSliderLocation = volumeButtonLocation;
-                if (volumeButtonLocation.y - volumeSliderSize.y - 50 >= 0) {
-                    finalVolumeSliderLocation.y = finalVolumeSliderLocation.y
-                            - volumeSliderSize.y;
-                } else {
-                    finalVolumeSliderLocation.y = finalVolumeSliderLocation.y
-                            + volumeSliderSize.y;
+            play = new Button(shell, SWT.PUSH);
+            play.setFont(getFontAwesomeWithSize(16));
+            play.setText(FontAwesome.play);
+            play.setForeground(new Color(display.getCurrent(), 36, 143, 187));
+            play.setLayoutData(new GridData(GridData.FILL, GridData.FILL, false,
+                    false));
+            play.setSize(16, 16);
+            play.addSelectionListener(new SelectionListener() {
+                @Override
+                public void widgetSelected(SelectionEvent e) {
+                    playSong();
                 }
 
-                volumeShell.setLocation(finalVolumeSliderLocation);
-                volumeShell.pack();
-                volumeShell.open();
-            }
-        }
+                @Override
+                public void widgetDefaultSelected(SelectionEvent e) {
+                    playSong();
+                }
 
-        volumeButton.addSelectionListener(new VolumeSelectionListener());
+            });
 
-        Composite tableComposite = new Composite(shell, SWT.NONE);
-        songTable = new Table(tableComposite, SWT.MULTI | SWT.BORDER
-            | SWT.FULL_SELECTION);
-        songTable.setLinesVisible(true);
-        songTable.setHeaderVisible(true);
-        GridData songTableGridData = new GridData(SWT.FILL, SWT.FILL, true,
-                true);
-        songTableGridData.heightHint = 400;
-        songTableGridData.widthHint = 410;
-        songTableGridData.horizontalSpan = 8;
-        songTable.setLayoutData(songTableGridData);
+            stop = new Button(shell, SWT.PUSH);
+            stop.setFont(getFontAwesomeWithSize(16));
+            stop.setText(FontAwesome.stop);
+            stop.setForeground(new Color(display.getCurrent(), 36, 143, 187));
+            stop.setLayoutData(new GridData(GridData.FILL, GridData.FILL, false,
+                    false));
+            stop.setSize(16, 16);
+            stop.addSelectionListener(new SelectionListener() {
+                public void widgetSelected(SelectionEvent arg0) {
+                    stopSong();
+                }
 
-        TableColumn trackNumberColumn = new TableColumn(songTable, SWT.RIGHT);
-        trackNumberColumn.setText("Track #");
-        trackNumberColumn.setMoveable(true);
-        TableColumn artistColumn = new TableColumn(songTable, SWT.LEFT);
-        artistColumn.setText("Artist");
-        artistColumn.setMoveable(true);
-        TableColumn albumColumn = new TableColumn(songTable, SWT.LEFT);
-        albumColumn.setText("Album");
-        albumColumn.setMoveable(true);
-        TableColumn songNameColumn = new TableColumn(songTable, SWT.LEFT);
-        songNameColumn.setText("Title");
-        songNameColumn.setMoveable(true);
+                public void widgetDefaultSelected(SelectionEvent arg0) {
+                    stopSong();
+                }
+            });
 
-        trackNumberColumn.pack();
-        artistColumn.pack();
-        albumColumn.pack();
-        songNameColumn.pack();
+            next = new Button(shell, SWT.PUSH);
+            next.setFont(getFontAwesomeWithSize(16));
+            next.setText(FontAwesome.forward);
+            next.setForeground(new Color(display.getCurrent(), 36, 143, 187));
+            next.setLayoutData(new GridData(GridData.FILL, GridData.FILL, false,
+                    false));
+            next.setSize(16, 16);
+            next.addSelectionListener(new SelectionListener() {
+                public void widgetSelected(SelectionEvent arg0) {
+                    next();
+                }
 
-        songTable.setSortColumn(songNameColumn);
-        songTable.setSortDirection(SWT.UP);
-        TableColumnLayout tableLayout = new TableColumnLayout();
-        tableLayout.setColumnData(trackNumberColumn, new ColumnWeightData(0, 30, true));
-        tableLayout.setColumnData(artistColumn, new ColumnWeightData(20, 100, true));
-        tableLayout.setColumnData(albumColumn, new ColumnWeightData(15, 90, true));
-        tableLayout.setColumnData(songNameColumn, new ColumnWeightData(45, 150, true));
-        tableComposite.setLayout(tableLayout);
-        tableComposite.setLayoutData(songTableGridData);
+                public void widgetDefaultSelected(SelectionEvent arg0) {
+                    next();
+                }
+            });
 
+            shuffleButton = new Button(shell, SWT.PUSH);
+            shuffleButton.setFont(getFontAwesomeWithSize(16));
+            shuffleButton.setText(FontAwesome.random);
+            shuffleButton.setForeground(new Color(display.getCurrent(), 36, 143, 187));
+            shuffleButton.setLayoutData(new GridData(GridData.FILL, GridData.FILL, false,
+                    false));
+            shuffleButton.setSize(16, 16);
+            shuffleButton.addSelectionListener(new SelectionListener() {
+                public void widgetSelected(SelectionEvent arg0) {
+                    toggleShuffle();
+                }
 
-        initPlayer();
-        shell.pack();
-        shell.open();
+                public void widgetDefaultSelected(SelectionEvent arg0) {
+                    toggleShuffle();
+                }
+            });
 
-        theSoundPlayer.setVideoSink(ElementFactory
-                .make("fakesink", "videosink"));
-        theSoundPlayer.connect(new PlayBin.ABOUT_TO_FINISH() {
-            public void aboutToFinish(final PlayBin element) {
-                display.asyncExec(new Runnable() {
-                    public void run() {
-                        TableItem nextItem = songTable
-                                .getItem(determineNextSongIndex(false));
-                        songTable.setSelection(nextItem);
-                        File song = new File((String) nextItem
-                                .getData("filename"));
-                        playSongFromScratch(song);
+            repeatButton = new Button(shell, SWT.PUSH);
+            repeatButton.setFont(getFontAwesomeWithSize(16));
+            repeatButton.setText(FontAwesome.repeat);
+            repeatButton.setForeground(new Color(display.getCurrent(), 36, 143, 187));
+            repeatButton.setLayoutData(new GridData(GridData.FILL, GridData.FILL, false,
+                    false));
+            repeatButton.setSize(16, 16);
+            repeatButton.addSelectionListener(new SelectionListener() {
+                public void widgetSelected(SelectionEvent arg0) {
+                    toggleRepeat();
+                }
+
+                public void widgetDefaultSelected(SelectionEvent arg0) {
+                    toggleRepeat();
+                }
+            });
+
+            trackSeek = new Scale(shell, SWT.HORIZONTAL);
+            trackSeek.setLayoutData(new GridData(GridData.FILL, GridData.FILL,
+                    true, false));
+            trackSeek.setPageIncrement(5);
+            trackSeek.setMinimum(0);
+            trackSeek.addSelectionListener(new SelectionListener() {
+                public void widgetSelected(SelectionEvent e) {
+                    doTrackSeek(e);
+                }
+
+                public void widgetDefaultSelected(SelectionEvent e) {
+                    doTrackSeek(e);
+                }
+
+                private void doTrackSeek(SelectionEvent e) {
+                    currentPosition = trackSeek.getSelection();
+                    theSoundPlayer.seek(ClockTime.fromSeconds(currentPosition));
+                }
+            });
+
+            volumeButton = new Button(shell, SWT.PUSH);
+            volumeButton.setFont(getFontAwesomeWithSize(16));
+            volumeButton.setText(FontAwesome.volume_up);
+            volumeButton.setForeground(new Color(display.getCurrent(), 36, 143, 187));
+            volumeButton.setLayoutData(new GridData(GridData.END, GridData.FILL,
+                    false, false));
+            volumeButton.setSize(16, 16);
+
+            class VolumeSelectionListener implements SelectionListener {
+                private Scale volumeSlider;
+
+                public VolumeSelectionListener() {
+                }
+
+                public void widgetSelected(SelectionEvent e) {
+                    createVolumeSlider(e);
+                }
+
+                public void widgetDefaultSelected(SelectionEvent e) {
+                    createVolumeSlider(e);
+                }
+
+                private void createVolumeSlider(SelectionEvent e) {
+                    Shell volumeShell = new Shell(shell, SWT.NO_FOCUS | SWT.NO_TRIM);
+                    volumeShell.setLayout(new RowLayout());
+
+                    class VolumeShellFocusListener implements FocusListener {
+                        Shell myVolumeshell;
+
+                        public VolumeShellFocusListener(Shell myVolumeshell) {
+                            this.myVolumeshell = myVolumeshell;
+                        }
+
+                        public void focusGained(FocusEvent e) {
+                        }
+
+                        public void focusLost(FocusEvent e) {
+                            myVolumeshell.close();
+                        }
+
                     }
-                });
+
+                    volumeSlider = new Scale(volumeShell, SWT.VERTICAL);
+                    Point volumeSliderSize = new Point(150, 20);
+                    volumeSlider.setMinimum(0);
+                    volumeSlider.addFocusListener(new VolumeShellFocusListener(
+                            volumeShell));
+                    volumeSlider.setMaximum(100);
+                    volumeSlider.setIncrement(2);
+                    volumeSlider.setPageIncrement(10);
+                    volumeSlider.setSelection(100 - theSoundPlayer.getVolumePercent());
+                    volumeSlider.addSelectionListener(new SelectionListener() {
+                        public void widgetSelected(SelectionEvent e) {
+                            handleVolumeChange(e);
+                        }
+
+                        public void widgetDefaultSelected(SelectionEvent e) {
+                            handleVolumeChange(e);
+                        }
+
+                        private void handleVolumeChange(SelectionEvent e) {
+                            volumePercent = (100 - volumeSlider.getSelection());
+                            theSoundPlayer.setVolumePercent(volumePercent);
+                            preferencesAndSongDB.storePreferences();
+                        }
+                    });
+                    Point volumeButtonLocation = ((Button) e.getSource())
+                            .toDisplay(0, 0);
+                    Point finalVolumeSliderLocation = volumeButtonLocation;
+                    if (volumeButtonLocation.y - volumeSliderSize.y - 50 >= 0) {
+                        finalVolumeSliderLocation.y = finalVolumeSliderLocation.y
+                                - volumeSliderSize.y;
+                    } else {
+                        finalVolumeSliderLocation.y = finalVolumeSliderLocation.y
+                                + volumeSliderSize.y;
+                    }
+
+                    volumeShell.setLocation(finalVolumeSliderLocation);
+                    volumeShell.pack();
+                    volumeShell.open();
+                }
             }
-        });
+
+            volumeButton.addSelectionListener(new VolumeSelectionListener());
+
+            Composite tableComposite = new Composite(shell, SWT.NONE);
+            songTable = new Table(tableComposite, SWT.MULTI | SWT.BORDER
+                | SWT.FULL_SELECTION);
+            songTable.setLinesVisible(true);
+            songTable.setHeaderVisible(true);
+            GridData songTableGridData = new GridData(SWT.FILL, SWT.FILL, true,
+                    true);
+            songTableGridData.heightHint = 400;
+            songTableGridData.widthHint = 410;
+            songTableGridData.horizontalSpan = 8;
+            songTable.setLayoutData(songTableGridData);
+
+            TableColumn trackNumberColumn = new TableColumn(songTable, SWT.RIGHT);
+            trackNumberColumn.setText("Track #");
+            trackNumberColumn.setMoveable(true);
+            TableColumn artistColumn = new TableColumn(songTable, SWT.LEFT);
+            artistColumn.setText("Artist");
+            artistColumn.setMoveable(true);
+            TableColumn albumColumn = new TableColumn(songTable, SWT.LEFT);
+            albumColumn.setText("Album");
+            albumColumn.setMoveable(true);
+            TableColumn songNameColumn = new TableColumn(songTable, SWT.LEFT);
+            songNameColumn.setText("Title");
+            songNameColumn.setMoveable(true);
+
+            trackNumberColumn.pack();
+            artistColumn.pack();
+            albumColumn.pack();
+            songNameColumn.pack();
+
+            songTable.setSortColumn(songNameColumn);
+            songTable.setSortDirection(SWT.UP);
+            TableColumnLayout tableLayout = new TableColumnLayout();
+            tableLayout.setColumnData(trackNumberColumn, new ColumnWeightData(0, 30, true));
+            tableLayout.setColumnData(artistColumn, new ColumnWeightData(20, 100, true));
+            tableLayout.setColumnData(albumColumn, new ColumnWeightData(15, 90, true));
+            tableLayout.setColumnData(songNameColumn, new ColumnWeightData(45, 150, true));
+            tableComposite.setLayout(tableLayout);
+            tableComposite.setLayoutData(songTableGridData);
+
+
+            initPlayer();
+            shell.pack();
+            shell.open();
+
+            theSoundPlayer.setVideoSink(ElementFactory
+                    .make("fakesink", "videosink"));
+            theSoundPlayer.connect(new PlayBin.ABOUT_TO_FINISH() {
+                public void aboutToFinish(final PlayBin element) {
+                    display.asyncExec(new Runnable() {
+                        public void run() {
+                            TableItem nextItem = songTable
+                                    .getItem(determineNextSongIndex(false));
+                            songTable.setSelection(nextItem);
+                            File song = new File((String) nextItem
+                                    .getData("filename"));
+                            playSongFromScratch(song);
+                        }
+                    });
+                }
+            });
 
             theSoundPlayer.connect(new PlayBin.AUDIO_CHANGED() {
                 public void audioChanged(final PlayBin element) {
